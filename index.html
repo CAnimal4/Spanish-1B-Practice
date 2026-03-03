@@ -601,6 +601,7 @@ Developer note:
           <button class="btn small" data-solo="weather" id="soloWeatherBtn" aria-label="Practice only Weather">Practice only Weather</button>
           <button class="btn small" data-solo="clothing" id="soloClothingBtn" aria-label="Practice only Clothing">Practice only Clothing</button>
           <button class="btn small" data-solo="foods" id="soloFoodsBtn" aria-label="Practice only Foods">Practice only Foods</button>
+          <button class="btn small" data-solo="present_progressive" id="soloPresentProgressiveBtn" aria-label="Practice only Present Progressive">Practice only Present Progressive</button>
           <button class="btn small" data-solo="ser_estar" id="soloSerEstarBtn" aria-label="Practice only Ser Estar">Practice only Ser/Estar</button>
           <button class="btn small" data-solo="gustar" id="soloGustarBtn" aria-label="Practice only Gustar">Practice only Gustar</button>
           <button class="btn small" data-solo="dates" id="soloDatesBtn" aria-label="Practice only Dates">Practice only Dates</button>
@@ -624,6 +625,7 @@ Developer note:
             <option value="weather">Weather</option>
             <option value="clothing">Clothing</option>
             <option value="foods">Foods</option>
+            <option value="present_progressive">Present Progressive</option>
             <option value="ser_estar">Ser / Estar</option>
             <option value="gustar">Gustar</option>
             <option value="dates">Dates</option>
@@ -780,6 +782,10 @@ Developer note:
             <label><input type="checkbox" id="toggle_foods" aria-label="Toggle foods module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
           <div class="toggle">
+            <div><div class="label">Present Progressive</div><div class="desc">Practice estar + gerund forms (including common irregular gerunds).</div></div>
+            <label><input type="checkbox" id="toggle_present_progressive" aria-label="Toggle present progressive module" /><span class="switch" aria-hidden="true"></span></label>
+          </div>
+          <div class="toggle">
             <div><div class="label">Ser / Estar</div><div class="desc">Sentence-based ser/estar decision + conjugation practice.</div></div>
             <label><input type="checkbox" id="toggle_ser_estar" aria-label="Toggle ser estar module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
@@ -802,6 +808,9 @@ Developer note:
             <label class="btn small ghost"><input type="checkbox" id="tense_present" aria-label="Toggle present tense" />&nbsp;Present</label>
             <label class="btn small ghost"><input type="checkbox" id="tense_preterite" aria-label="Toggle preterite tense" />&nbsp;Preterite</label>
             <label class="btn small ghost"><input type="checkbox" id="tense_imperfect" aria-label="Toggle imperfect tense" />&nbsp;Imperfect</label>
+          </div>
+          <div class="row">
+            <label class="btn small ghost"><input type="checkbox" id="tense_irregular_only" aria-label="Only irregular verbs in tenses module" />&nbsp;Only irregular verbs</label>
           </div>
           <p class="small muted">If you enable the Tenses module but select no tenses, Present will be re-enabled automatically.</p>
           <h3>Vocab selection</h3>
@@ -1025,6 +1034,7 @@ Developer note:
     { key: 'weather',   name: 'Weather' },
     { key: 'clothing',  name: 'Clothing' },
     { key: 'foods',     name: 'Foods' },
+    { key: 'present_progressive', name: 'Present Progressive' },
     { key: 'ser_estar', name: 'Ser / Estar' },
     { key: 'gustar',    name: 'Gustar' },
     { key: 'dates',     name: 'Dates' }
@@ -2428,6 +2438,29 @@ mean/nice
     { id: 'gustar-20', prompt: 'They like the red backpacks.', expected: 'les gustan las mochilas rojas' }
   ];
 
+  const PRESENT_PROGRESSIVE_POOL = [
+    { id: 'prog-hablar-1s', subject: 'yo', infinitive: 'hablar', en: 'I am speaking' },
+    { id: 'prog-comer-2s', subject: 'tú', infinitive: 'comer', en: 'You are eating' },
+    { id: 'prog-vivir-3s', subject: 'él', infinitive: 'vivir', en: 'He is living' },
+    { id: 'prog-estudiar-1p', subject: 'nosotros', infinitive: 'estudiar', en: 'We are studying' },
+    { id: 'prog-correr-3p', subject: 'ellos', infinitive: 'correr', en: 'They are running' },
+    { id: 'prog-leer-1s', subject: 'yo', infinitive: 'leer', en: 'I am reading' },
+    { id: 'prog-oir-2s', subject: 'tú', infinitive: 'oír', en: 'You are hearing' },
+    { id: 'prog-caer-3s', subject: 'ella', infinitive: 'caer', en: 'She is falling' },
+    { id: 'prog-traer-1p', subject: 'nosotros', infinitive: 'traer', en: 'We are bringing' },
+    { id: 'prog-construir-3p', subject: 'ellos', infinitive: 'construir', en: 'They are building' },
+    { id: 'prog-dormir-1s', subject: 'yo', infinitive: 'dormir', en: 'I am sleeping' },
+    { id: 'prog-pedir-2s', subject: 'tú', infinitive: 'pedir', en: 'You are asking for' },
+    { id: 'prog-servir-3s', subject: 'usted', infinitive: 'servir', en: 'You are serving' },
+    { id: 'prog-repetir-1p', subject: 'nosotros', infinitive: 'repetir', en: 'We are repeating' },
+    { id: 'prog-decir-3p', subject: 'ellos', infinitive: 'decir', en: 'They are saying' },
+    { id: 'prog-escribir-1s', subject: 'yo', infinitive: 'escribir', en: 'I am writing' },
+    { id: 'prog-hacer-2s', subject: 'tú', infinitive: 'hacer', en: 'You are doing' },
+    { id: 'prog-abrir-3s', subject: 'ella', infinitive: 'abrir', en: 'She is opening' },
+    { id: 'prog-beber-1p', subject: 'nosotros', infinitive: 'beber', en: 'We are drinking' },
+    { id: 'prog-salir-3p', subject: 'ellos', infinitive: 'salir', en: 'They are going out' }
+  ];
+
   // --------------------------------------------
   // Conjugation helpers (Reflexive + Tenses)
   // --------------------------------------------
@@ -2820,6 +2853,47 @@ mean/nice
     return '';
   }
 
+  function toSpanishGerund(infinitive) {
+    const v = stripDiacritics(String(infinitive || '').toLowerCase());
+    const irregular = {
+      ir: 'yendo',
+      poder: 'pudiendo',
+      dormir: 'durmiendo',
+      pedir: 'pidiendo',
+      repetir: 'repitiendo',
+      servir: 'sirviendo',
+      decir: 'diciendo',
+      venir: 'viniendo'
+    };
+    if (irregular[v]) return irregular[v];
+
+    if (v.endsWith('ar')) return v.slice(0, -2) + 'ando';
+    if (v.endsWith('er') || v.endsWith('ir')) {
+      const stem = v.slice(0, -2);
+      const endsWithVowel = /[aeiou]$/.test(stem);
+      return stem + (endsWithVowel ? 'yendo' : 'iendo');
+    }
+    return v;
+  }
+
+  function subjectToPersonCode(subject) {
+    const s = normalizeLoose(subject);
+    if (s === 'yo') return '1s';
+    if (s === 'tu') return '2s';
+    if (s === 'el' || s === 'ella' || s === 'usted') return '3s';
+    if (s === 'nosotros' || s === 'nosotras') return '1p';
+    if (s === 'ellos' || s === 'ellas' || s === 'ustedes') return '3p';
+    return '3s';
+  }
+
+  function isIrregularForTense(verb, tense) {
+    const v = stripDiacritics(String(verb || '').toLowerCase());
+    if (IRREGULAR[tense] && IRREGULAR[tense][v]) return true;
+    if (tense === 'present' && STEM_CHANGE_PRESENT[v]) return true;
+    if (tense === 'preterite' && STEM_CHANGE_PRETERITE_IR[v]) return true;
+    return false;
+  }
+
   // Reflexive pronouns for present tense.
   const REFLEXIVE_PRONOUN = {
     '1s': 'me',
@@ -3122,11 +3196,13 @@ mean/nice
           weather: false,
           clothing: false,
           foods: false,
+          present_progressive: false,
           ser_estar: false,
           gustar: false,
           dates: false
         },
         tensesEnabled: { present: true, preterite: false, imperfect: false },
+        tensesIrregularOnly: false,
         vocabMode: 'weighted',
         firstRunSeen: false,
         showKeyHintStrip: true
@@ -3170,6 +3246,7 @@ mean/nice
           out.settings.tensesEnabled[t] = !!s.tensesEnabled[t];
         }
       }
+      if (typeof s.tensesIrregularOnly === 'boolean') out.settings.tensesIrregularOnly = s.tensesIrregularOnly;
       if (s.vocabMode === 'uniform' || s.vocabMode === 'weighted') out.settings.vocabMode = s.vocabMode;
       if (typeof s.firstRunSeen === 'boolean') out.settings.firstRunSeen = s.firstRunSeen;
       if (typeof s.showKeyHintStrip === 'boolean') out.settings.showKeyHintStrip = s.showKeyHintStrip;
@@ -3554,6 +3631,31 @@ mean/nice
       }
     },
 
+    // === MODULE: PRESENT_PROGRESSIVE ===
+    present_progressive: {
+      generateQuestion(app) {
+        const hidden = app.state.hiddenItems;
+        const recent = new Set(app.recentByModule.present_progressive.slice(-4));
+        const pool = PRESENT_PROGRESSIVE_POOL.filter(x => !hidden[x.id] && !recent.has(x.id));
+        const fallback = PRESENT_PROGRESSIVE_POOL.filter(x => !hidden[x.id]);
+        const item = pickByWeakScore(pool.length ? pool : fallback, app.state.itemScores, recent);
+        if (!item) return null;
+        const personCode = subjectToPersonCode(item.subject);
+        const estar = conjugate('estar', 'present', personCode);
+        const gerund = toSpanishGerund(item.infinitive);
+        const expected = `${estar} ${gerund}`;
+        return {
+          module: 'present_progressive',
+          id: item.id,
+          mode: 'text',
+          prompt: `Write in Spanish using present progressive: <strong>${escapeHtml(item.en)}</strong><br><small>Use <em>estar + gerundio</em>.</small>`,
+          expectedDisplay: expected,
+          acceptable: buildAcceptableAnswerSet([expected]),
+          explanation: `Subject: ${escapeHtml(item.subject)} • Infinitive: ${escapeHtml(item.infinitive)}`
+        };
+      }
+    },
+
     // === MODULE: SER_ESTAR ===
     ser_estar: {
       generateQuestion(app) {
@@ -3660,6 +3762,7 @@ mean/nice
       weather: [],
       clothing: [],
       foods: [],
+      present_progressive: [],
       ser_estar: [],
       gustar: [],
       dates: []
@@ -3767,6 +3870,7 @@ mean/nice
         soloWeatherBtn: $('soloWeatherBtn'),
         soloClothingBtn: $('soloClothingBtn'),
         soloFoodsBtn: $('soloFoodsBtn'),
+        soloPresentProgressiveBtn: $('soloPresentProgressiveBtn'),
         soloSerEstarBtn: $('soloSerEstarBtn'),
         soloGustarBtn: $('soloGustarBtn'),
         soloDatesBtn: $('soloDatesBtn'),
@@ -3819,6 +3923,7 @@ mean/nice
         toggle_weather: $('toggle_weather'),
         toggle_clothing: $('toggle_clothing'),
         toggle_foods: $('toggle_foods'),
+        toggle_present_progressive: $('toggle_present_progressive'),
         toggle_ser_estar: $('toggle_ser_estar'),
         toggle_gustar: $('toggle_gustar'),
         toggle_dates: $('toggle_dates'),
@@ -3826,6 +3931,7 @@ mean/nice
         tense_present: $('tense_present'),
         tense_preterite: $('tense_preterite'),
         tense_imperfect: $('tense_imperfect'),
+        tense_irregular_only: $('tense_irregular_only'),
 
         vocab_weighted: $('vocab_weighted'),
         vocab_uniform: $('vocab_uniform'),
@@ -3921,6 +4027,7 @@ mean/nice
         this.$.soloWeatherBtn,
         this.$.soloClothingBtn,
         this.$.soloFoodsBtn,
+        this.$.soloPresentProgressiveBtn,
         this.$.soloSerEstarBtn,
         this.$.soloGustarBtn,
         this.$.soloDatesBtn
@@ -4025,6 +4132,14 @@ mean/nice
       tenseToggle('present');
       tenseToggle('preterite');
       tenseToggle('imperfect');
+      this.$.tense_irregular_only.addEventListener('change', () => {
+        this.state.settings.tensesIrregularOnly = !!this.$.tense_irregular_only.checked;
+        this.saveSoon();
+        this.updateCountsRow();
+        if (this.currentQuestion && this.currentQuestion.module === 'tenses' && !this.isTenseItemAllowed(this.currentQuestion)) {
+          this.nextQuestion({ keepFeedback: false });
+        }
+      });
 
       // Vocab mode
       const modeRadios = [this.$.vocab_weighted, this.$.vocab_uniform];
@@ -4165,6 +4280,7 @@ mean/nice
       this.$.tense_present.checked = !!this.state.settings.tensesEnabled.present;
       this.$.tense_preterite.checked = !!this.state.settings.tensesEnabled.preterite;
       this.$.tense_imperfect.checked = !!this.state.settings.tensesEnabled.imperfect;
+      this.$.tense_irregular_only.checked = !!this.state.settings.tensesIrregularOnly;
 
       // Vocab mode
       if (this.state.settings.vocabMode === 'uniform') this.$.vocab_uniform.checked = true;
@@ -4198,6 +4314,7 @@ mean/nice
       this.$.soloWeatherBtn.disabled = !enabled.weather;
       this.$.soloClothingBtn.disabled = !enabled.clothing;
       this.$.soloFoodsBtn.disabled = !enabled.foods;
+      this.$.soloPresentProgressiveBtn.disabled = !enabled.present_progressive;
       this.$.soloSerEstarBtn.disabled = !enabled.ser_estar;
       this.$.soloGustarBtn.disabled = !enabled.gustar;
       this.$.soloDatesBtn.disabled = !enabled.dates;
@@ -4265,6 +4382,13 @@ mean/nice
       return !!(t.present || t.preterite || t.imperfect);
     },
 
+    isTenseItemAllowed(item) {
+      if (!item) return false;
+      if (!this.state.settings.tensesEnabled[item.tense]) return false;
+      if (!this.state.settings.tensesIrregularOnly) return true;
+      return isIrregularForTense(item.verb, item.tense);
+    },
+
     anyModuleEnabled() {
       return Object.values(this.state.settings.modulesEnabled).some(Boolean);
     },
@@ -4299,6 +4423,7 @@ mean/nice
         weather: this.getModuleCounts('weather'),
         clothing: this.getModuleCounts('clothing'),
         foods: this.getModuleCounts('foods'),
+        present_progressive: this.getModuleCounts('present_progressive'),
         ser_estar: this.getModuleCounts('ser_estar'),
         gustar: this.getModuleCounts('gustar'),
         dates: this.getModuleCounts('dates')
@@ -4379,10 +4504,10 @@ mean/nice
 
       if (moduleKey === 'tenses') {
         // Only count tenses currently enabled
-        const totalAll = this.tensesPool.filter(q => this.state.settings.tensesEnabled[q.tense]).length;
+        const totalAll = this.tensesPool.filter(q => this.isTenseItemAllowed(q)).length;
         let hiddenCount = 0;
         for (const q of this.tensesPool) {
-          if (!this.state.settings.tensesEnabled[q.tense]) continue;
+          if (!this.isTenseItemAllowed(q)) continue;
           if (hidden[q.id]) hiddenCount++;
         }
         return { total: totalAll, available: Math.max(0, totalAll - hiddenCount) };
@@ -4440,6 +4565,12 @@ mean/nice
         const total = FOODS_POOL.length;
         let hiddenCount = 0;
         for (const q of FOODS_POOL) if (hidden[q.id]) hiddenCount++;
+        return { total, available: Math.max(0, total - hiddenCount) };
+      }
+      if (moduleKey === 'present_progressive') {
+        const total = PRESENT_PROGRESSIVE_POOL.length;
+        let hiddenCount = 0;
+        for (const q of PRESENT_PROGRESSIVE_POOL) if (hidden[q.id]) hiddenCount++;
         return { total, available: Math.max(0, total - hiddenCount) };
       }
       if (moduleKey === 'ser_estar') {
@@ -4539,7 +4670,7 @@ mean/nice
       if (moduleKey === 'vocab') for (const x of this.vocab) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'commands') for (const x of this.commandPool) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'reflexive') for (const x of this.reflexivePool) if (!hidden[x.id]) ids.push(x.id);
-      else if (moduleKey === 'tenses') for (const x of this.tensesPool) if (!hidden[x.id] && this.state.settings.tensesEnabled[x.tense]) ids.push(x.id);
+      else if (moduleKey === 'tenses') for (const x of this.tensesPool) if (!hidden[x.id] && this.isTenseItemAllowed(x)) ids.push(x.id);
       else if (moduleKey === 'days') for (const x of DAYS_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'months') for (const x of MONTHS_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'seasons') for (const x of SEASONS_POOL) if (!hidden[x.id]) ids.push(x.id);
@@ -4549,6 +4680,7 @@ mean/nice
       else if (moduleKey === 'weather') for (const x of WEATHER_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'clothing') for (const x of CLOTHING_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'foods') for (const x of FOODS_POOL) if (!hidden[x.id]) ids.push(x.id);
+      else if (moduleKey === 'present_progressive') for (const x of PRESENT_PROGRESSIVE_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'ser_estar') for (const x of SER_ESTAR_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'gustar') for (const x of GUSTAR_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'dates') for (const x of DATES_POOL) if (!hidden[x.id]) ids.push(x.id);
@@ -4886,21 +5018,14 @@ mean/nice
       if (this.getModuleCounts('tenses').available === 0) return null;
 
       const hidden = this.state.hiddenItems;
-      const enabledTenses = Object.entries(this.state.settings.tensesEnabled)
-        .filter(([k,v]) => v)
-        .map(([k]) => k);
-
+      const enabledTenses = Object.entries(this.state.settings.tensesEnabled).filter(([k,v]) => v).map(([k]) => k);
       if (!enabledTenses.length) return null;
 
       // Pick a random pool item that matches enabled tenses and isn't hidden.
       const recent = new Set(this.recentByModule.tenses.slice(-3));
 
-      const pool = this.tensesPool.filter(q =>
-        enabledTenses.includes(q.tense) && !hidden[q.id] && !recent.has(q.id)
-      );
-      const fallback = this.tensesPool.filter(q =>
-        enabledTenses.includes(q.tense) && !hidden[q.id]
-      );
+      const pool = this.tensesPool.filter(q => this.isTenseItemAllowed(q) && !hidden[q.id] && !recent.has(q.id));
+      const fallback = this.tensesPool.filter(q => this.isTenseItemAllowed(q) && !hidden[q.id]);
       const item = (pool.length || fallback.length) ? pickByWeakScore(pool.length ? pool : fallback, this.state.itemScores, recent) : null;
       if (!item) return null;
 
@@ -5231,7 +5356,7 @@ mean/nice
         const verb = parts.slice(1, parts.length - 2).join('-');
         return `Conjugation: ${verb} • ${tense} • ${person}`;
       }
-      if (id.startsWith('days-') || id.startsWith('months-') || id.startsWith('seasons-') || id.startsWith('time-') || id.startsWith('colors-') || id.startsWith('price-') || id.startsWith('weather-') || id.startsWith('clothing-') || id.startsWith('foods-') || id.startsWith('serestar-') || id.startsWith('gustar-') || id.startsWith('seg-') || id.startsWith('date-')) {
+      if (id.startsWith('days-') || id.startsWith('months-') || id.startsWith('seasons-') || id.startsWith('time-') || id.startsWith('colors-') || id.startsWith('price-') || id.startsWith('weather-') || id.startsWith('clothing-') || id.startsWith('foods-') || id.startsWith('prog-') || id.startsWith('serestar-') || id.startsWith('gustar-') || id.startsWith('seg-') || id.startsWith('date-')) {
         return `Module item: ${id}`;
       }
       return id;
@@ -5503,7 +5628,7 @@ mean/nice
     runAutomatedChecks(opts = {}) {
       const { startup = false } = opts;
       const results = [];
-      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'prices', 'weather', 'clothing', 'foods', 'ser_estar', 'gustar', 'dates'];
+      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'];
       const hasModules = requiredModules.every((key) => MODULES.some((m) => m.key === key) && modules[key]);
       results.push({ ok: hasModules, label: 'Expanded modules registered (including Ser/Estar + Gustar split)' });
       results.push({ ok: !MODULES.some((m) => m.key === 'ser_estar_gustar'), label: 'Deprecated ser_estar_gustar module removed from registry' });
@@ -5516,6 +5641,7 @@ mean/nice
       results.push({ ok: WEATHER_POOL.length >= 20, label: 'Weather pool has >= 20 items' });
       results.push({ ok: CLOTHING_POOL.length >= 20, label: 'Clothing pool has >= 20 items' });
       results.push({ ok: FOODS_POOL.length >= 20, label: 'Foods pool has >= 20 items' });
+      results.push({ ok: PRESENT_PROGRESSIVE_POOL.length >= 16, label: 'Present Progressive pool has >= 16 items' });
       results.push({ ok: DATES_POOL.length >= 20, label: 'Dates pool has >= 20 items' });
       results.push({ ok: SER_ESTAR_POOL.length >= 20, label: 'Ser/Estar pool has >= 20 items' });
       results.push({ ok: GUSTAR_POOL.length >= 16, label: 'Gustar pool has >= 16 items' });
@@ -5539,7 +5665,7 @@ mean/nice
       });
       this.state.moduleChoices.newModulesAnswerMode = prevMode;
       results.push({ ok: sampleChecks.every(Boolean), label: 'New modules generate text mode in spelling-only setting' });
-      const textOnlyChecks = ['prices', 'weather', 'clothing', 'foods', 'ser_estar', 'gustar', 'dates'].map((k) => {
+      const textOnlyChecks = ['prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'].map((k) => {
         const q = modules[k].generateQuestion(this);
         return !!q && q.mode === 'text';
       });
