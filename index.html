@@ -69,7 +69,7 @@ Developer note:
     }
 
     *{box-sizing:border-box}
-    html,body{height:100%}
+    html,body{min-height:100%}
     body{
       margin:0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -77,10 +77,9 @@ Developer note:
                   radial-gradient(1200px 600px at 80% 20%, #ecfeff 0%, transparent 55%),
                   var(--bg);
       color:var(--text);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:22px;
+      min-height:100vh;
+      overflow-y:auto;
+      padding:18px 22px 28px;
     }
 
     a{color:var(--primary)}
@@ -90,6 +89,7 @@ Developer note:
       display:flex;
       flex-direction:column;
       gap:14px;
+      margin:0 auto;
     }
 
     /* Top bar */
@@ -98,16 +98,16 @@ Developer note:
       align-items:center;
       justify-content:space-between;
       gap:12px;
-      padding:14px 16px;
-      border:1px solid var(--border);
+      padding:17px 18px;
+      border:1px solid #d7e0ef;
       border-radius: var(--radius);
-      background: rgba(255,255,255,.75);
+      background: rgba(255,255,255,.92);
       backdrop-filter: blur(8px);
-      box-shadow: 0 1px 0 rgba(15,23,42,.04);
+      box-shadow: 0 10px 24px rgba(15,23,42,.08);
     }
     .brand{display:flex; flex-direction:column; gap:2px; min-width:0}
-    .brand .title{font-weight:800; letter-spacing:.2px}
-    .brand .subtitle{color:var(--muted); font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .brand .title{font-weight:800; letter-spacing:.2px; font-size:1.12rem}
+    .brand .subtitle{color:var(--muted); font-size:.98rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
     .top-actions{display:flex; align-items:center; gap:10px}
     .chip{
@@ -117,8 +117,8 @@ Developer note:
       border:1px solid var(--border);
       background: #ffffff;
       border-radius:999px;
-      padding:6px 10px;
-      font-size:.9rem;
+      padding:8px 12px;
+      font-size:.96rem;
       font-weight:700;
     }
     .chip .dot{width:9px; height:9px; border-radius:999px; background:var(--primary)}
@@ -130,16 +130,16 @@ Developer note:
     }
 
     .icon-btn{
-      width:40px;height:40px;
+      width:46px;height:46px;
       border-radius:12px;
       border:1px solid var(--border);
       background:#fff;
       cursor:pointer;
-      font-size:16px;
+      font-size:19px;
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      box-shadow: 0 1px 0 rgba(15,23,42,.05);
+      box-shadow: 0 2px 8px rgba(15,23,42,.08);
     }
     .icon-btn:hover{background:var(--surface-2)}
     .icon-btn:active{transform: translateY(1px)}
@@ -2112,21 +2112,7 @@ mean/nice
     { id: 'days-jueves', sp: 'el jueves', en: 'Thursday' },
     { id: 'days-viernes', sp: 'el viernes', en: 'Friday' },
     { id: 'days-sabado', sp: 'el sábado', en: 'Saturday' },
-    { id: 'days-domingo', sp: 'el domingo', en: 'Sunday' },
-    { id: 'days-on-lunes', sp: 'el lunes', en: 'on Monday' },
-    { id: 'days-on-martes', sp: 'el martes', en: 'on Tuesday' },
-    { id: 'days-on-miercoles', sp: 'el miércoles', en: 'on Wednesday' },
-    { id: 'days-on-jueves', sp: 'el jueves', en: 'on Thursday' },
-    { id: 'days-on-viernes', sp: 'el viernes', en: 'on Friday' },
-    { id: 'days-on-sabado', sp: 'el sábado', en: 'on Saturday' },
-    { id: 'days-on-domingo', sp: 'el domingo', en: 'on Sunday' },
-    { id: 'days-every-lunes', sp: 'el lunes', en: 'every Monday' },
-    { id: 'days-every-martes', sp: 'el martes', en: 'every Tuesday' },
-    { id: 'days-every-miercoles', sp: 'el miércoles', en: 'every Wednesday' },
-    { id: 'days-every-jueves', sp: 'el jueves', en: 'every Thursday' },
-    { id: 'days-every-viernes', sp: 'el viernes', en: 'every Friday' },
-    { id: 'days-every-sabado', sp: 'el sábado', en: 'every Saturday' },
-    { id: 'days-every-domingo', sp: 'el domingo', en: 'every Sunday' }
+    { id: 'days-domingo', sp: 'el domingo', en: 'Sunday' }
   ];
 
   const MONTHS_POOL = [
@@ -2141,34 +2127,14 @@ mean/nice
     { id: 'months-septiembre', sp: 'septiembre', en: 'September' },
     { id: 'months-octubre', sp: 'octubre', en: 'October' },
     { id: 'months-noviembre', sp: 'noviembre', en: 'November' },
-    { id: 'months-diciembre', sp: 'diciembre', en: 'December' },
-    { id: 'months-in-enero', sp: 'enero', en: 'in January' },
-    { id: 'months-in-febrero', sp: 'febrero', en: 'in February' },
-    { id: 'months-in-marzo', sp: 'marzo', en: 'in March' },
-    { id: 'months-in-abril', sp: 'abril', en: 'in April' },
-    { id: 'months-in-mayo', sp: 'mayo', en: 'in May' },
-    { id: 'months-in-junio', sp: 'junio', en: 'in June' },
-    { id: 'months-in-julio', sp: 'julio', en: 'in July' },
-    { id: 'months-in-agosto', sp: 'agosto', en: 'in August' },
-    { id: 'months-in-septiembre', sp: 'septiembre', en: 'in September' },
-    { id: 'months-in-octubre', sp: 'octubre', en: 'in October' },
-    { id: 'months-in-noviembre', sp: 'noviembre', en: 'in November' },
-    { id: 'months-in-diciembre', sp: 'diciembre', en: 'in December' }
+    { id: 'months-diciembre', sp: 'diciembre', en: 'December' }
   ];
 
   const SEASONS_POOL = [
     { id: 'seasons-primavera', sp: 'la primavera', en: 'spring' },
     { id: 'seasons-verano', sp: 'el verano', en: 'summer' },
     { id: 'seasons-otono', sp: 'el otoño', en: 'fall' },
-    { id: 'seasons-invierno', sp: 'el invierno', en: 'winter' },
-    { id: 'seasons-in-primavera', sp: 'la primavera', en: 'in spring' },
-    { id: 'seasons-in-verano', sp: 'el verano', en: 'in summer' },
-    { id: 'seasons-in-otono', sp: 'el otoño', en: 'in fall' },
-    { id: 'seasons-in-invierno', sp: 'el invierno', en: 'in winter' },
-    { id: 'seasons-my-fav-primavera', sp: 'la primavera', en: 'my favorite season is spring' },
-    { id: 'seasons-my-fav-verano', sp: 'el verano', en: 'my favorite season is summer' },
-    { id: 'seasons-my-fav-otono', sp: 'el otoño', en: 'my favorite season is fall' },
-    { id: 'seasons-my-fav-invierno', sp: 'el invierno', en: 'my favorite season is winter' }
+    { id: 'seasons-invierno', sp: 'el invierno', en: 'winter' }
   ];
 
   const COLORS_POOL = [
@@ -2183,14 +2149,6 @@ mean/nice
     { id: 'colors-rosado', sp: 'rosado', en: 'pink' },
     { id: 'colors-anaranjado', sp: 'anaranjado', en: 'orange' },
     { id: 'colors-cafe', sp: 'café', en: 'brown' },
-    { id: 'colors-roja', sp: 'roja', en: 'red (feminine adjective)' },
-    { id: 'colors-amarilla', sp: 'amarilla', en: 'yellow (feminine adjective)' },
-    { id: 'colors-negra', sp: 'negra', en: 'black (feminine adjective)' },
-    { id: 'colors-blanca', sp: 'blanca', en: 'white (feminine adjective)' },
-    { id: 'colors-verde-dark', sp: 'verde oscuro', en: 'dark green' },
-    { id: 'colors-verde-light', sp: 'verde claro', en: 'light green' },
-    { id: 'colors-azul-dark', sp: 'azul oscuro', en: 'dark blue' },
-    { id: 'colors-azul-light', sp: 'azul claro', en: 'light blue' },
     { id: 'colors-plateado', sp: 'plateado', en: 'silver' },
     { id: 'colors-dorado', sp: 'dorado', en: 'gold' },
     { id: 'colors-beige', sp: 'beige', en: 'beige' },
@@ -5632,11 +5590,11 @@ mean/nice
       const hasModules = requiredModules.every((key) => MODULES.some((m) => m.key === key) && modules[key]);
       results.push({ ok: hasModules, label: 'Expanded modules registered (including Ser/Estar + Gustar split)' });
       results.push({ ok: !MODULES.some((m) => m.key === 'ser_estar_gustar'), label: 'Deprecated ser_estar_gustar module removed from registry' });
-      results.push({ ok: DAYS_POOL.length >= 18, label: 'Days pool has >= 18 items' });
-      results.push({ ok: MONTHS_POOL.length >= 20, label: 'Months pool has >= 20 items' });
-      results.push({ ok: SEASONS_POOL.length >= 8, label: 'Seasons pool has >= 8 items' });
+      results.push({ ok: DAYS_POOL.length >= 7, label: 'Days pool has >= 7 items' });
+      results.push({ ok: MONTHS_POOL.length >= 12, label: 'Months pool has >= 12 items' });
+      results.push({ ok: SEASONS_POOL.length >= 4, label: 'Seasons pool has >= 4 items' });
       results.push({ ok: TIME_POOL.length >= 30, label: 'Time pool has >= 30 items' });
-      results.push({ ok: COLORS_POOL.length >= 18, label: 'Colors pool has >= 18 items' });
+      results.push({ ok: COLORS_POOL.length >= 15, label: 'Colors pool has >= 15 items' });
       results.push({ ok: PRICES_POOL.length >= 30, label: 'Prices pool has >= 30 items' });
       results.push({ ok: WEATHER_POOL.length >= 20, label: 'Weather pool has >= 20 items' });
       results.push({ ok: CLOTHING_POOL.length >= 20, label: 'Clothing pool has >= 20 items' });
