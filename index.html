@@ -622,7 +622,8 @@ Developer note:
         <div class="only-row" id="practiceOnlyRow" aria-label="Practice-only buttons">
           <button class="btn small" data-solo="numbers" id="soloNumbersBtn" aria-label="Practice only Numbers">Practice only Numbers</button>
           <button class="btn small" data-solo="commands" id="soloCommandsBtn" aria-label="Practice only Command tone">Practice only Command tone</button>
-          <button class="btn small" data-solo="vocab" id="soloVocabBtn" aria-label="Practice only Vocab">Practice only Vocab</button>
+          <button class="btn small" data-solo="vocab" id="soloVocabBtn" aria-label="Practice only Honors Vocab">Practice only Honors Vocab</button>
+          <button class="btn small" data-solo="mayo_madness_1" id="soloMayoMadness1Btn" aria-label="Practice only Mayo Madness Level 1 Vocab">Practice only Mayo Madness Level 1 Vocab</button>
           <button class="btn small" data-solo="reflexive" id="soloReflexiveBtn" aria-label="Practice only Reflexive">Practice only Reflexive</button>
           <button class="btn small" data-solo="tenses" id="soloTensesBtn" aria-label="Practice only Tenses">Practice only Tenses</button>
           <button class="btn small" data-solo="days" id="soloDaysBtn" aria-label="Practice only Days">Practice only Days</button>
@@ -646,7 +647,8 @@ Developer note:
             <option value="">All enabled modules</option>
             <option value="numbers">Numbers</option>
             <option value="commands">Command tone</option>
-            <option value="vocab">Vocab</option>
+            <option value="vocab">Honors Vocab</option>
+            <option value="mayo_madness_1">Mayo Madness Level 1 Vocab</option>
             <option value="reflexive">Reflexive</option>
             <option value="tenses">Tenses</option>
             <option value="days">Days</option>
@@ -680,14 +682,22 @@ Developer note:
 
       <!-- Numbers section (preserves original 1–1000 behavior and UX) -->
       <section id="numbersSection">
-        <h2>Random Number (1–1000)</h2>
-        <p class="lead">Reveal the Spanish spelling. In mixed-module mode, <strong>Next</strong> may rotate to a different module.</p>
+        <h2 id="numbersTitle">Random Number (1–1000)</h2>
+        <p class="lead" id="numbersLead">Reveal the Spanish spelling. In mixed-module mode, <strong>Next</strong> may rotate to a different module.</p>
 
         <div class="display" id="numberDisplay" aria-live="polite">?</div>
         <div class="spanish" id="numberSpanish" aria-live="polite"></div>
 
+        <div id="numberTypingBlock" style="display:none">
+          <div class="input-row">
+            <input id="numberAnswerInput" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the number in Spanish..." aria-label="Number spelling answer input" />
+          </div>
+          <div class="feedback neutral" id="numberFeedback" aria-live="polite"></div>
+        </div>
+
         <div class="controls">
           <button class="btn primary" id="revealBtn" aria-label="Reveal in Spanish">Reveal in Spanish</button>
+          <button class="btn primary" id="submitNumberBtn" aria-label="Submit number spelling" style="display:none">Submit</button>
           <button class="btn" id="nextNumbersBtn" aria-label="Next practice item">Next</button>
           <button class="btn warn" id="practiceBtn" aria-label="Need more practice">Need more practice</button>
         </div>
@@ -759,7 +769,7 @@ Developer note:
         <summary>Modules</summary>
         <div class="accordion-inner">
           <div class="toggle">
-            <div><div class="label">Numbers (1–1000)</div><div class="desc">Keep the original number-practice behavior.</div></div>
+            <div><div class="label">Numbers (1–1000)</div><div class="desc">Practice Spanish number spelling in a chosen range.</div></div>
             <label><input type="checkbox" id="toggle_numbers" aria-label="Toggle numbers module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
           <div class="toggle">
@@ -767,8 +777,12 @@ Developer note:
             <label><input type="checkbox" id="toggle_commands" aria-label="Toggle command module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
           <div class="toggle">
-            <div><div class="label">Vocab</div><div class="desc">English → Spanish typing (accents optional).</div></div>
+            <div><div class="label">Honors Vocab</div><div class="desc">English → Spanish typing (accents optional).</div></div>
             <label><input type="checkbox" id="toggle_vocab" aria-label="Toggle vocab module" /><span class="switch" aria-hidden="true"></span></label>
+          </div>
+          <div class="toggle">
+            <div><div class="label">Mayo Madness Level 1 Vocab</div><div class="desc">Classroom objects and people vocabulary.</div></div>
+            <label><input type="checkbox" id="toggle_mayo_madness_1" aria-label="Toggle Mayo Madness Level 1 Vocab module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
           <div class="toggle">
             <div><div class="label">Reflexive verbs</div><div class="desc">Present tense only (accepts <em>se llama</em> or <em>llama</em>).</div></div>
@@ -846,6 +860,14 @@ Developer note:
             <label class="btn small ghost"><input type="checkbox" id="tense_irregular_only" aria-label="Only irregular verbs in tenses module" />&nbsp;Only irregular verbs</label>
           </div>
           <p class="small muted">If you enable the Tenses module but select no tenses, Present will be re-enabled automatically.</p>
+          <h3>Numbers</h3>
+          <div class="row">
+            <label for="numbersMaxRange">Range: 1-<output id="numbersMaxValue">1000</output></label>
+            <input type="range" id="numbersMaxRange" min="1" max="1000" value="1000" aria-label="Numbers range upper limit" />
+          </div>
+          <div class="row">
+            <label class="btn small ghost"><input type="checkbox" id="numbersRequireTyping" aria-label="Require typed spelling for numbers" />&nbsp;Type and spell the number</label>
+          </div>
           <h3>Vocab selection</h3>
           <div class="row">
             <label class="btn small ghost"><input type="radio" name="vocabMode" value="weighted" id="vocab_weighted" aria-label="Weighted vocab selection" />&nbsp;Complexity-weighted (default)</label>
@@ -985,7 +1007,7 @@ Developer note:
       </div>
 
       <ul>
-        <li><strong>⚙ Settings</strong>: enable modules (Vocab, Commands, Reflexive, Tenses).</li>
+        <li><strong>⚙ Settings</strong>: enable modules (Honors Vocab, Mayo Madness Vocab, Commands, Reflexive, Tenses).</li>
         <li><strong>Enter</strong>: submit answers (typing modules).</li>
         <li><strong>Accent toolbar</strong>: inserts á é í ó ú ñ ü at your cursor.</li>
         <li><strong>🙈 Never show again</strong>: hides the current question (manage/restore in Settings).</li>
@@ -1053,9 +1075,10 @@ Developer note:
   window.APP_DEBUG = false;
 
   const MODULES = [
-    { key: 'numbers',   name: 'Numbers (1–1000)' },
+    { key: 'numbers',   name: 'Numbers' },
     { key: 'commands',  name: 'Command tone' },
-    { key: 'vocab',     name: 'Vocab' },
+    { key: 'vocab',     name: 'Honors Vocab' },
+    { key: 'mayo_madness_1', name: 'Mayo Madness Level 1 Vocab' },
     { key: 'reflexive', name: 'Reflexive verbs' },
     { key: 'tenses',    name: 'Tenses' },
     { key: 'days',      name: 'Days' },
@@ -2056,8 +2079,13 @@ mean/nice
   // --------------------------------------------
   // Numbers module (original behavior preserved)
   // --------------------------------------------
-  function rand() {
-    return Math.floor(Math.random() * 1000) + 1;
+  function clampNumberMax(value) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? Math.max(1, Math.min(1000, n)) : 1000;
+  }
+
+  function rand(max = 1000) {
+    return Math.floor(Math.random() * clampNumberMax(max)) + 1;
   }
 
   // Arrays from the original numbers app:
@@ -2109,19 +2137,20 @@ mean/nice
   }
 
   // Generate a "similar" number (original behavior) to practice tough ranges.
-  function generateSimilar(n) {
-    if (n === 1000) return 1000;
+  function generateSimilar(n, max = 1000) {
+    const limit = clampNumberMax(max);
+    if (n >= limit) return limit;
     if (n <= 29) {
       const offset = Math.floor(Math.random() * 5) - 2;
       const similar = n + offset;
-      return Math.max(1, Math.min(29, similar));
+      return Math.max(1, Math.min(Math.min(29, limit), similar));
     }
     if (n < 100) {
       const t = Math.floor(n / 10) * 10;
       const r = n % 10;
       const newR = Math.max(0, Math.min(9, r + (Math.floor(Math.random() * 5) - 2)));
       const candidate = t + newR;
-      return candidate < 30 ? 30 : candidate;
+      return Math.max(1, Math.min(limit, candidate < 30 ? 30 : candidate));
     }
     if (n < 1000) {
       const h = Math.floor(n / 100) * 100;
@@ -2130,9 +2159,9 @@ mean/nice
       r = Math.max(0, Math.min(99, r));
       let candidate = h + r;
       if (candidate === 0) candidate = 100;
-      return candidate;
+      return Math.max(1, Math.min(limit, candidate));
     }
-    return rand();
+    return rand(limit);
   }
 
   // --------------------------------------------
@@ -2187,6 +2216,18 @@ mean/nice
     { id: 'colors-beige', sp: 'beige', en: 'beige' },
     { id: 'colors-turquesa', sp: 'turquesa', en: 'turquoise' },
     { id: 'colors-violeta', sp: 'violeta', en: 'violet' }
+  ];
+
+  const MAYO_MADNESS_LEVEL_1_POOL = [
+    { id: 'mayo1-lapiz', sp: 'el lápiz', en: 'the pencil' },
+    { id: 'mayo1-silla', sp: 'la silla', en: 'the chair' },
+    { id: 'mayo1-escritorio', sp: 'el escritorio', en: 'the desk' },
+    { id: 'mayo1-suelo', sp: 'el suelo / el piso', en: 'the floor', acceptable: ['el suelo', 'el piso'] },
+    { id: 'mayo1-reloj', sp: 'el reloj', en: 'the clock' },
+    { id: 'mayo1-cuaderno', sp: 'el cuaderno', en: 'the notebook' },
+    { id: 'mayo1-papel', sp: 'el papel', en: 'the paper' },
+    { id: 'mayo1-mochila', sp: 'la mochila', en: 'the backpack' },
+    { id: 'mayo1-maestro', sp: 'el maestro / la maestra', en: 'the teacher', acceptable: ['el maestro', 'la maestra'] }
   ];
 
   const COLOR_CONFUSABLES = {
@@ -3176,6 +3217,7 @@ mean/nice
           numbers: true,
           commands: false,
           vocab: false,
+          mayo_madness_1: false,
           reflexive: false,
           tenses: false,
           days: true,
@@ -3194,6 +3236,8 @@ mean/nice
         },
         tensesEnabled: { present: true, preterite: false, imperfect: false },
         tensesIrregularOnly: false,
+        numbersMax: 1000,
+        numbersRequireTyping: false,
         vocabMode: 'weighted',
         firstRunSeen: false,
         showKeyHintStrip: true
@@ -3238,6 +3282,8 @@ mean/nice
         }
       }
       if (typeof s.tensesIrregularOnly === 'boolean') out.settings.tensesIrregularOnly = s.tensesIrregularOnly;
+      out.settings.numbersMax = clampNumberMax(s.numbersMax);
+      if (typeof s.numbersRequireTyping === 'boolean') out.settings.numbersRequireTyping = s.numbersRequireTyping;
       if (s.vocabMode === 'uniform' || s.vocabMode === 'weighted') out.settings.vocabMode = s.vocabMode;
       if (typeof s.firstRunSeen === 'boolean') out.settings.firstRunSeen = s.firstRunSeen;
       if (typeof s.showKeyHintStrip === 'boolean') out.settings.showKeyHintStrip = s.showKeyHintStrip;
@@ -3540,6 +3586,27 @@ mean/nice
       }
     },
 
+    // === MODULE: MAYO MADNESS LEVEL 1 VOCAB ===
+    mayo_madness_1: {
+      generateQuestion(app) {
+        const hidden = app.state.hiddenItems;
+        const recent = new Set(app.recentByModule.mayo_madness_1.slice(-3));
+        const pool = MAYO_MADNESS_LEVEL_1_POOL.filter(x => !hidden[x.id] && !recent.has(x.id));
+        const fallback = MAYO_MADNESS_LEVEL_1_POOL.filter(x => !hidden[x.id]);
+        const item = pickByWeakScore(pool.length ? pool : fallback, app.state.itemScores, recent);
+        if (!item) return null;
+        const answers = item.acceptable || [item.sp];
+        return {
+          module: 'mayo_madness_1',
+          id: item.id,
+          mode: 'text',
+          prompt: `Translate to Spanish: <strong>${escapeHtml(item.en)}</strong>`,
+          expectedDisplay: item.sp,
+          acceptable: buildAcceptableAnswerSet(answers)
+        };
+      }
+    },
+
     // === MODULE: PRICES ===
     prices: {
       generateQuestion(app) {
@@ -3742,6 +3809,7 @@ mean/nice
       numbers: [],
       commands: [],
       vocab: [],
+      mayo_madness_1: [],
       reflexive: [],
       tenses: [],
       days: [],
@@ -3850,6 +3918,7 @@ mean/nice
         soloNumbersBtn: $('soloNumbersBtn'),
         soloCommandsBtn: $('soloCommandsBtn'),
         soloVocabBtn: $('soloVocabBtn'),
+        soloMayoMadness1Btn: $('soloMayoMadness1Btn'),
         soloReflexiveBtn: $('soloReflexiveBtn'),
         soloTensesBtn: $('soloTensesBtn'),
         soloDaysBtn: $('soloDaysBtn'),
@@ -3874,12 +3943,19 @@ mean/nice
 
         // numbers
         numbersSection: $('numbersSection'),
+        numbersTitle: $('numbersTitle'),
+        numbersLead: $('numbersLead'),
         numberDisplay: $('numberDisplay'),
         numberSpanish: $('numberSpanish'),
+        numberTypingBlock: $('numberTypingBlock'),
+        numberAnswerInput: $('numberAnswerInput'),
+        numberFeedback: $('numberFeedback'),
         revealBtn: $('revealBtn'),
+        submitNumberBtn: $('submitNumberBtn'),
         nextNumbersBtn: $('nextNumbersBtn'),
         practiceBtn: $('practiceBtn'),
         practiceIndicator: $('practiceIndicator'),
+        numbersHint: $('numbersHint'),
         numbersGuideBtn: $('numbersGuideBtn'),
 
         // qa
@@ -3903,6 +3979,7 @@ mean/nice
         toggle_numbers: $('toggle_numbers'),
         toggle_commands: $('toggle_commands'),
         toggle_vocab: $('toggle_vocab'),
+        toggle_mayo_madness_1: $('toggle_mayo_madness_1'),
         toggle_reflexive: $('toggle_reflexive'),
         toggle_tenses: $('toggle_tenses'),
         toggle_days: $('toggle_days'),
@@ -3926,6 +4003,9 @@ mean/nice
 
         vocab_weighted: $('vocab_weighted'),
         vocab_uniform: $('vocab_uniform'),
+        numbersMaxRange: $('numbersMaxRange'),
+        numbersMaxValue: $('numbersMaxValue'),
+        numbersRequireTyping: $('numbersRequireTyping'),
 
         manageHiddenBtn: $('manageHiddenBtn'),
         hiddenCountLabel: $('hiddenCountLabel'),
@@ -4007,6 +4087,7 @@ mean/nice
         this.$.soloNumbersBtn,
         this.$.soloCommandsBtn,
         this.$.soloVocabBtn,
+        this.$.soloMayoMadness1Btn,
         this.$.soloReflexiveBtn,
         this.$.soloTensesBtn,
         this.$.soloDaysBtn,
@@ -4041,8 +4122,16 @@ mean/nice
 
       // Numbers buttons
       this.$.revealBtn.addEventListener('click', () => this.revealSpanishNumber());
+      this.$.submitNumberBtn.addEventListener('click', () => this.submitNumberAnswer());
       this.$.nextNumbersBtn.addEventListener('click', () => this.nextQuestion({ keepFeedback: false }));
       this.$.practiceBtn.addEventListener('click', () => this.markNeedPractice());
+      this.$.numberAnswerInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (this.answered) this.nextQuestion({ keepFeedback: false });
+          else this.submitNumberAnswer();
+        }
+      });
 
       // Accent buttons
       this.$.accentToolbar.addEventListener('click', (e) => {
@@ -4129,6 +4218,25 @@ mean/nice
         this.updateCountsRow();
         if (this.currentQuestion && this.currentQuestion.module === 'tenses' && !this.isTenseItemAllowed(this.currentQuestion)) {
           this.nextQuestion({ keepFeedback: false });
+        }
+      });
+
+      this.$.numbersMaxRange.addEventListener('input', () => {
+        const v = clampNumberMax(this.$.numbersMaxRange.value);
+        this.state.settings.numbersMax = v;
+        this.$.numbersMaxValue.textContent = String(v);
+        this.updateNumbersRangeText();
+        this.saveSoon();
+        this.updateCountsRow();
+        if (this.currentQuestion && this.currentQuestion.module === 'numbers' && this.currentQuestion.number > v) {
+          this.nextQuestion({ forceModule: 'numbers', keepFeedback: false });
+        }
+      });
+      this.$.numbersRequireTyping.addEventListener('change', () => {
+        this.state.settings.numbersRequireTyping = !!this.$.numbersRequireTyping.checked;
+        this.saveSoon();
+        if (this.currentQuestion && this.currentQuestion.module === 'numbers') {
+          this.renderQuestion(this.currentQuestion, { keepFeedback: false });
         }
       });
 
@@ -4273,6 +4381,13 @@ mean/nice
       this.$.tense_imperfect.checked = !!this.state.settings.tensesEnabled.imperfect;
       this.$.tense_irregular_only.checked = !!this.state.settings.tensesIrregularOnly;
 
+      const numbersMax = clampNumberMax(this.state.settings.numbersMax);
+      this.state.settings.numbersMax = numbersMax;
+      this.$.numbersMaxRange.value = String(numbersMax);
+      this.$.numbersMaxValue.textContent = String(numbersMax);
+      this.$.numbersRequireTyping.checked = !!this.state.settings.numbersRequireTyping;
+      this.updateNumbersRangeText();
+
       // Vocab mode
       if (this.state.settings.vocabMode === 'uniform') this.$.vocab_uniform.checked = true;
       else this.$.vocab_weighted.checked = true;
@@ -4294,6 +4409,7 @@ mean/nice
       this.$.soloNumbersBtn.disabled = !enabled.numbers;
       this.$.soloCommandsBtn.disabled = !enabled.commands;
       this.$.soloVocabBtn.disabled = !enabled.vocab;
+      this.$.soloMayoMadness1Btn.disabled = !enabled.mayo_madness_1;
       this.$.soloReflexiveBtn.disabled = !enabled.reflexive;
       this.$.soloTensesBtn.disabled = !enabled.tenses;
       this.$.soloDaysBtn.disabled = !enabled.days;
@@ -4318,6 +4434,17 @@ mean/nice
 
     isNewModulesSpellingOnly() {
       return (this.state.moduleChoices.newModulesAnswerMode || 'spelling') === 'spelling';
+    },
+
+    updateNumbersRangeText() {
+      const max = clampNumberMax(this.state.settings.numbersMax);
+      const rangeText = `1-${max}`;
+      if (this.$.numbersTitle) this.$.numbersTitle.textContent = `Random Number (${rangeText})`;
+      if (this.$.numbersLead) {
+        this.$.numbersLead.innerHTML = this.state.settings.numbersRequireTyping
+          ? `Type the Spanish spelling for numbers from <strong>${rangeText}</strong>.`
+          : `Reveal the Spanish spelling for numbers from <strong>${rangeText}</strong>. In mixed-module mode, <strong>Next</strong> may rotate to a different module.`;
+      }
     },
 
     openSettings() {
@@ -4399,26 +4526,7 @@ mean/nice
       const messages = [];
 
       // Vocab can be empty if parsing/filtering removes everything.
-      const counts = {
-        numbers: this.getModuleCounts('numbers'),
-        commands: this.getModuleCounts('commands'),
-        vocab: this.getModuleCounts('vocab'),
-        reflexive: this.getModuleCounts('reflexive'),
-        tenses: this.getModuleCounts('tenses'),
-        days: this.getModuleCounts('days'),
-        months: this.getModuleCounts('months'),
-        seasons: this.getModuleCounts('seasons'),
-        time: this.getModuleCounts('time'),
-        colors: this.getModuleCounts('colors'),
-        prices: this.getModuleCounts('prices'),
-        weather: this.getModuleCounts('weather'),
-        clothing: this.getModuleCounts('clothing'),
-        foods: this.getModuleCounts('foods'),
-        present_progressive: this.getModuleCounts('present_progressive'),
-        ser_estar: this.getModuleCounts('ser_estar'),
-        gustar: this.getModuleCounts('gustar'),
-        dates: this.getModuleCounts('dates')
-      };
+      const counts = Object.fromEntries(MODULES.map((m) => [m.key, this.getModuleCounts(m.key)]));
 
       for (const m of MODULES) {
         const key = m.key;
@@ -4434,7 +4542,7 @@ mean/nice
         if (counts[key].available === 0) {
           this.state.settings.modulesEnabled[key] = false;
           if (key === 'vocab' && counts[key].total === 0) {
-            messages.push('Vocab was auto-disabled because all entries overlap with dedicated modules or were filtered out.');
+            messages.push('Honors Vocab was auto-disabled because all entries overlap with dedicated modules or were filtered out.');
           } else {
             messages.push(`${m.name} was auto-disabled because it has 0 available items (all hidden, filtered out, or not configured).`);
           }
@@ -4467,8 +4575,12 @@ mean/nice
       const hidden = this.state.hiddenItems;
 
       if (moduleKey === 'numbers') {
-        const total = 1000;
-        const hiddenCount = Object.keys(hidden).filter(k => k.startsWith('number-')).length;
+        const total = clampNumberMax(this.state.settings.numbersMax);
+        const hiddenCount = Object.keys(hidden).filter((k) => {
+          if (!k.startsWith('number-')) return false;
+          const n = parseInt(k.replace('number-', ''), 10);
+          return Number.isFinite(n) && n >= 1 && n <= total;
+        }).length;
         return { total, available: Math.max(0, total - hiddenCount) };
       }
 
@@ -4508,6 +4620,13 @@ mean/nice
         const total = DAYS_POOL.length;
         let hiddenCount = 0;
         for (const q of DAYS_POOL) if (hidden[q.id]) hiddenCount++;
+        return { total, available: Math.max(0, total - hiddenCount) };
+      }
+
+      if (moduleKey === 'mayo_madness_1') {
+        const total = MAYO_MADNESS_LEVEL_1_POOL.length;
+        let hiddenCount = 0;
+        for (const q of MAYO_MADNESS_LEVEL_1_POOL) if (hidden[q.id]) hiddenCount++;
         return { total, available: Math.max(0, total - hiddenCount) };
       }
       if (moduleKey === 'months') {
@@ -4591,7 +4710,7 @@ mean/nice
       for (const m of MODULES) {
         const c = this.getModuleCounts(m.key);
         const on = this.state.settings.modulesEnabled[m.key];
-        const label = `${m.key === 'numbers' ? 'Numbers' : m.name}: ${c.available}/${c.total}`;
+        const label = `${m.name}: ${c.available}/${c.total}`;
         parts.push(on ? label : `<span style="opacity:.45">${label}</span>`);
       }
       this.$.countsRow.innerHTML = parts.join(' &nbsp;•&nbsp; ');
@@ -4659,6 +4778,7 @@ mean/nice
       const ids = [];
       if (moduleKey === 'numbers') return 2.5;
       if (moduleKey === 'vocab') for (const x of this.vocab) if (!hidden[x.id]) ids.push(x.id);
+      else if (moduleKey === 'mayo_madness_1') for (const x of MAYO_MADNESS_LEVEL_1_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'commands') for (const x of this.commandPool) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'reflexive') for (const x of this.reflexivePool) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'tenses') for (const x of this.tensesPool) if (!hidden[x.id] && this.isTenseItemAllowed(x)) ids.push(x.id);
@@ -4685,7 +4805,12 @@ mean/nice
       const { forceModule = null, keepFeedback = false } = opts;
 
       if (this.currentQuestion && !forceModule && !this.canAdvanceFromCurrentQuestion()) {
-        this.setFeedback('Type the correct answer to continue.', 'bad');
+        if (this.currentQuestion.module === 'numbers') {
+          this.setNumberFeedback('Type the correct Spanish spelling to continue.', 'bad');
+          if (this.$.numberAnswerInput && this.$.numberAnswerInput.offsetParent !== null) this.$.numberAnswerInput.focus();
+        } else {
+          this.setFeedback('Type the correct answer to continue.', 'bad');
+        }
         if (this.currentQuestion.mode === 'text' && this.$.answerInput && this.$.answerInput.offsetParent !== null) {
           this.$.answerInput.focus();
         }
@@ -4746,7 +4871,7 @@ mean/nice
     canAdvanceFromCurrentQuestion() {
       const q = this.currentQuestion;
       if (!q) return true;
-      if (q.module === 'numbers') return true;
+      if (q.module === 'numbers') return !this.state.settings.numbersRequireTyping || !!this.answered;
       if (q.mode === 'mcq') return true;
       if (q.mode === 'text') return !!this.answered;
       return true;
@@ -4774,6 +4899,7 @@ mean/nice
     // ----- Numbers -----
     generateNumbersQuestion() {
       const hidden = this.state.hiddenItems;
+      const max = clampNumberMax(this.state.settings.numbersMax);
 
       // quick availability check
       if (this.getModuleCounts('numbers').available === 0) return null;
@@ -4783,7 +4909,7 @@ mean/nice
       // If "Need more practice" was requested, generate a similar number next time Numbers appears.
       if (this.practiceRequested && this.currentNumber != null) {
         for (let i = 0; i < 20; i++) {
-          const candidate = generateSimilar(this.currentNumber);
+          const candidate = generateSimilar(this.currentNumber, max);
           if (!hidden[`number-${candidate}`]) {
             n = candidate;
             break;
@@ -4798,7 +4924,7 @@ mean/nice
       // Otherwise random, avoiding hidden and immediate repeats.
       if (n == null) {
         for (let i = 0; i < 2000; i++) {
-          const candidate = rand();
+          const candidate = rand(max);
           if (hidden[`number-${candidate}`]) continue;
           if (candidate === this.currentNumber) continue;
           n = candidate;
@@ -4818,6 +4944,49 @@ mean/nice
       if (!this.currentQuestion || this.currentQuestion.module !== 'numbers') return;
       const n = this.currentQuestion.number;
       this.$.numberSpanish.textContent = numberToSpanish(n);
+    },
+
+    submitNumberAnswer() {
+      const q = this.currentQuestion;
+      if (!q || q.module !== 'numbers') return;
+      if (!this.state.settings.numbersRequireTyping) {
+        this.revealSpanishNumber();
+        return;
+      }
+      if (this.answered) {
+        this.setNumberFeedback('Already answered - press Next to continue.', 'neutral');
+        return;
+      }
+
+      const user = this.$.numberAnswerInput.value;
+      const expected = numberToSpanish(q.number);
+      if (!normalizeLoose(user)) {
+        this.setNumberFeedback('Type the Spanish spelling first, then Submit.', 'neutral');
+        return;
+      }
+
+      const correct = buildAcceptableAnswerSet([expected]).has(normalizeLoose(user));
+      this.bumpStats(q.id, correct);
+      this.adjustItemScore(q.id, correct);
+
+      if (correct) {
+        const accentNote = this.accentNoteIfNeeded(user, expected);
+        this.answered = true;
+        this.$.numberSpanish.textContent = expected;
+        this.setNumberFeedback(`Correct: <strong>${escapeHtml(expected)}</strong>${accentNote ? `<br><small>${accentNote}</small>` : ''}`, 'good');
+      } else {
+        this.answered = false;
+        this.setNumberFeedback(`Not quite. Try spelling <strong>${q.number}</strong> in Spanish before continuing.`, 'bad');
+      }
+      this.saveSoon();
+    },
+
+    setNumberFeedback(html, tone) {
+      this.$.numberFeedback.classList.remove('good','bad','neutral','flash-good','flash-bad');
+      this.$.numberFeedback.classList.add(tone || 'neutral');
+      this.$.numberFeedback.innerHTML = html;
+      if (tone === 'good') this.$.numberFeedback.classList.add('flash-good');
+      if (tone === 'bad') this.$.numberFeedback.classList.add('flash-bad');
     },
 
     markNeedPractice() {
@@ -4867,6 +5036,7 @@ mean/nice
       return {
         module: 'vocab',
         id: pick.id,
+        mode: 'text',
         prompt: `Translate to Spanish: <strong>${escapeHtml(pick.en)}</strong>`,
         expectedDisplay: pick.sp,
         acceptable: pick.acceptable,
@@ -5057,10 +5227,20 @@ mean/nice
       if (q.module === 'numbers') {
         this.$.numbersSection.style.display = '';
         this.$.qaSection.style.display = 'none';
+        this.updateNumbersRangeText();
 
         this.$.numberDisplay.textContent = String(q.number);
         this.$.numberSpanish.textContent = '';
         this.$.practiceIndicator.textContent = this.numbersStatus || '';
+        const typingOn = !!this.state.settings.numbersRequireTyping;
+        this.$.numberTypingBlock.style.display = typingOn ? '' : 'none';
+        this.$.submitNumberBtn.style.display = typingOn ? '' : 'none';
+        this.$.revealBtn.textContent = typingOn ? 'Show answer' : 'Reveal in Spanish';
+        this.setNumberFeedback(typingOn ? 'Type the full Spanish spelling, then press Enter or Submit.' : '', 'neutral');
+        if (typingOn) {
+          this.$.numberAnswerInput.value = '';
+          setTimeout(() => this.$.numberAnswerInput.focus(), 0);
+        }
 
         // Button label: if only numbers enabled, it's "Next Number"; otherwise "Next"
         const enabled = this.getEnabledModules();
@@ -5321,7 +5501,8 @@ mean/nice
       }
 
       // Move on immediately
-      this.nextQuestion({ keepFeedback: false });
+      this.answered = true;
+      this.nextQuestion({ forceModule: this.soloMode || null, keepFeedback: false });
     },
 
     describeId(id) {
@@ -5330,7 +5511,12 @@ mean/nice
       }
       if (id.startsWith('vocab-')) {
         const v = this.vocabById.get(id);
-        if (v) return `Vocab: "${v.en}" → ${v.sp}`;
+        if (v) return `Honors Vocab: "${v.en}" → ${v.sp}`;
+        return id;
+      }
+      if (id.startsWith('mayo1-')) {
+        const v = MAYO_MADNESS_LEVEL_1_POOL.find((item) => item.id === id);
+        if (v) return `Mayo Madness Level 1 Vocab: "${v.en}" -> ${v.sp}`;
         return id;
       }
       if (id.startsWith('cmd-')) {
@@ -5619,7 +5805,7 @@ mean/nice
     runAutomatedChecks(opts = {}) {
       const { startup = false } = opts;
       const results = [];
-      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'];
+      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'mayo_madness_1', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'];
       const hasModules = requiredModules.every((key) => MODULES.some((m) => m.key === key) && modules[key]);
       results.push({ ok: hasModules, label: 'Expanded modules registered (including Ser/Estar + Gustar split)' });
       results.push({ ok: !MODULES.some((m) => m.key === 'ser_estar_gustar'), label: 'Deprecated ser_estar_gustar module removed from registry' });
@@ -5628,6 +5814,7 @@ mean/nice
       results.push({ ok: SEASONS_POOL.length >= 4, label: 'Seasons pool has >= 4 items' });
       results.push({ ok: TIME_POOL.length >= 30, label: 'Time pool has >= 30 items' });
       results.push({ ok: COLORS_POOL.length >= 15, label: 'Colors pool has >= 15 items' });
+      results.push({ ok: MAYO_MADNESS_LEVEL_1_POOL.length === 9, label: 'Mayo Madness Level 1 Vocab pool has 9 items' });
       results.push({ ok: PRICES_POOL.length >= 30, label: 'Prices pool has >= 30 items' });
       results.push({ ok: WEATHER_POOL.length >= 20, label: 'Weather pool has >= 20 items' });
       results.push({ ok: CLOTHING_POOL.length >= 20, label: 'Clothing pool has >= 20 items' });
@@ -5641,6 +5828,15 @@ mean/nice
       results.push({ ok: this.vocab.some((v) => normalizeLoose(v.sp) === 'la pared'), label: 'Vocab keeps non-overlap entries (example: la pared)' });
       const vocabSample = this.vocab.find((v) => !this.state.hiddenItems[v.id]);
       results.push({ ok: !vocabSample || this.generateVocabQuestion()?.mode === 'text', label: 'Vocab generator returns text mode' });
+      const mayoSample = modules.mayo_madness_1.generateQuestion(this);
+      results.push({ ok: !!mayoSample && mayoSample.mode === 'text' && mayoSample.acceptable instanceof Set, label: 'Mayo Madness Level 1 Vocab generates text questions' });
+      const priorNumbersMax = this.state.settings.numbersMax;
+      const priorCurrentNumber = this.currentNumber;
+      this.state.settings.numbersMax = 12;
+      const rangedNumber = this.generateNumbersQuestion();
+      results.push({ ok: !!rangedNumber && rangedNumber.number >= 1 && rangedNumber.number <= 12, label: 'Numbers range setting limits generated questions' });
+      this.state.settings.numbersMax = priorNumbersMax;
+      this.currentNumber = priorCurrentNumber;
       results.push({ ok: typeof this.handleRevealKey === 'function' && typeof this.handleAdvanceKey === 'function', label: 'Keyboard shortcuts registered' });
       const missingToggles = MODULES
         .map((m) => m.key)
@@ -5656,7 +5852,7 @@ mean/nice
       });
       this.state.moduleChoices.newModulesAnswerMode = prevMode;
       results.push({ ok: sampleChecks.every(Boolean), label: 'New modules generate text mode in spelling-only setting' });
-      const textOnlyChecks = ['prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'].map((k) => {
+      const textOnlyChecks = ['mayo_madness_1', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'].map((k) => {
         const q = modules[k].generateQuestion(this);
         return !!q && q.mode === 'text';
       });
@@ -5667,15 +5863,18 @@ mean/nice
       results.push({ ok: typeof this.canAdvanceFromCurrentQuestion === 'function', label: 'Strict text retry guard helper exists' });
       const priorQuestion = this.currentQuestion;
       const priorAnswered = this.answered;
+      const priorNumbersRequireTyping = this.state.settings.numbersRequireTyping;
       this.currentQuestion = { module: 'vocab', mode: 'text', id: 'smoke-text' };
       this.answered = false;
       const blockTextAdvance = this.canAdvanceFromCurrentQuestion() === false;
       this.currentQuestion = { module: 'commands', mode: 'mcq', id: 'smoke-mcq' };
       this.answered = false;
       const allowMcqAdvance = this.canAdvanceFromCurrentQuestion() === true;
+      this.state.settings.numbersRequireTyping = false;
       this.currentQuestion = { module: 'numbers', mode: 'numbers', id: 'smoke-num' };
       this.answered = false;
       const allowNumbersAdvance = this.canAdvanceFromCurrentQuestion() === true;
+      this.state.settings.numbersRequireTyping = priorNumbersRequireTyping;
       this.currentQuestion = priorQuestion;
       this.answered = priorAnswered;
       results.push({ ok: blockTextAdvance && allowMcqAdvance && allowNumbersAdvance, label: 'Strict retry applies to text only (MCQ/Numbers unaffected)' });
