@@ -862,11 +862,13 @@ Developer note:
           <p class="small muted">If you enable the Tenses module but select no tenses, Present will be re-enabled automatically.</p>
           <h3>Numbers</h3>
           <div class="row">
-            <label for="numbersMaxRange">Range: 1-<output id="numbersMaxValue">1000</output></label>
+            <label for="numbersMinRange">Range: <output id="numbersMinValue">1</output>-<output id="numbersMaxValue">1000</output></label>
+            <input type="range" id="numbersMinRange" min="1" max="1000" value="1" aria-label="Numbers range lower limit" />
             <input type="range" id="numbersMaxRange" min="1" max="1000" value="1000" aria-label="Numbers range upper limit" />
           </div>
           <div class="row">
             <label class="btn small ghost"><input type="checkbox" id="numbersRequireTyping" aria-label="Require typed spelling for numbers" />&nbsp;Type and spell the number</label>
+            <label class="btn small ghost"><input type="checkbox" id="numbersSequential" aria-label="Practice numbers in order" />&nbsp;Go in order</label>
           </div>
           <h3>Vocab selection</h3>
           <div class="row">
@@ -2079,13 +2081,24 @@ mean/nice
   // --------------------------------------------
   // Numbers module (original behavior preserved)
   // --------------------------------------------
-  function clampNumberMax(value) {
+  function clampNumberBound(value, fallback = 1) {
     const n = parseInt(value, 10);
-    return Number.isFinite(n) ? Math.max(1, Math.min(1000, n)) : 1000;
+    return Number.isFinite(n) ? Math.max(1, Math.min(1000, n)) : fallback;
   }
 
-  function rand(max = 1000) {
-    return Math.floor(Math.random() * clampNumberMax(max)) + 1;
+  function clampNumberMax(value) {
+    return clampNumberBound(value, 1000);
+  }
+
+  function normalizeNumberRange(minValue, maxValue) {
+    const min = clampNumberBound(minValue, 1);
+    const max = clampNumberBound(maxValue, 1000);
+    return min <= max ? { min, max } : { min: max, max: min };
+  }
+
+  function rand(min = 1, max = 1000) {
+    const range = normalizeNumberRange(min, max);
+    return Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
   }
 
   // Arrays from the original numbers app:
@@ -2137,20 +2150,21 @@ mean/nice
   }
 
   // Generate a "similar" number (original behavior) to practice tough ranges.
-  function generateSimilar(n, max = 1000) {
-    const limit = clampNumberMax(max);
-    if (n >= limit) return limit;
+  function generateSimilar(n, min = 1, max = 1000) {
+    const range = normalizeNumberRange(min, max);
+    const clampToRange = (candidate) => Math.max(range.min, Math.min(range.max, candidate));
+    if (n >= range.max) return range.max;
     if (n <= 29) {
       const offset = Math.floor(Math.random() * 5) - 2;
       const similar = n + offset;
-      return Math.max(1, Math.min(Math.min(29, limit), similar));
+      return clampToRange(similar);
     }
     if (n < 100) {
       const t = Math.floor(n / 10) * 10;
       const r = n % 10;
       const newR = Math.max(0, Math.min(9, r + (Math.floor(Math.random() * 5) - 2)));
       const candidate = t + newR;
-      return Math.max(1, Math.min(limit, candidate < 30 ? 30 : candidate));
+      return clampToRange(candidate < 30 ? 30 : candidate);
     }
     if (n < 1000) {
       const h = Math.floor(n / 100) * 100;
@@ -2159,9 +2173,9 @@ mean/nice
       r = Math.max(0, Math.min(99, r));
       let candidate = h + r;
       if (candidate === 0) candidate = 100;
-      return Math.max(1, Math.min(limit, candidate));
+      return clampToRange(candidate);
     }
-    return rand(limit);
+    return rand(range.min, range.max);
   }
 
   // --------------------------------------------
@@ -3236,8 +3250,10 @@ mean/nice
         },
         tensesEnabled: { present: true, preterite: false, imperfect: false },
         tensesIrregularOnly: false,
+        numbersMin: 1,
         numbersMax: 1000,
         numbersRequireTyping: false,
+        numbersSequential: false,
         vocabMode: 'weighted',
         firstRunSeen: false,
         showKeyHintStrip: true
@@ -3282,8 +3298,11 @@ mean/nice
         }
       }
       if (typeof s.tensesIrregularOnly === 'boolean') out.settings.tensesIrregularOnly = s.tensesIrregularOnly;
-      out.settings.numbersMax = clampNumberMax(s.numbersMax);
+      const numberRange = normalizeNumberRange(s.numbersMin ?? base.settings.numbersMin, s.numbersMax ?? base.settings.numbersMax);
+      out.settings.numbersMin = numberRange.min;
+      out.settings.numbersMax = numberRange.max;
       if (typeof s.numbersRequireTyping === 'boolean') out.settings.numbersRequireTyping = s.numbersRequireTyping;
+      if (typeof s.numbersSequential === 'boolean') out.settings.numbersSequential = s.numbersSequential;
       if (s.vocabMode === 'uniform' || s.vocabMode === 'weighted') out.settings.vocabMode = s.vocabMode;
       if (typeof s.firstRunSeen === 'boolean') out.settings.firstRunSeen = s.firstRunSeen;
       if (typeof s.showKeyHintStrip === 'boolean') out.settings.showKeyHintStrip = s.showKeyHintStrip;
@@ -4003,9 +4022,12 @@ mean/nice
 
         vocab_weighted: $('vocab_weighted'),
         vocab_uniform: $('vocab_uniform'),
+        numbersMinRange: $('numbersMinRange'),
+        numbersMinValue: $('numbersMinValue'),
         numbersMaxRange: $('numbersMaxRange'),
         numbersMaxValue: $('numbersMaxValue'),
         numbersRequireTyping: $('numbersRequireTyping'),
+        numbersSequential: $('numbersSequential'),
 
         manageHiddenBtn: $('manageHiddenBtn'),
         hiddenCountLabel: $('hiddenCountLabel'),
@@ -4221,22 +4243,24 @@ mean/nice
         }
       });
 
-      this.$.numbersMaxRange.addEventListener('input', () => {
-        const v = clampNumberMax(this.$.numbersMaxRange.value);
-        this.state.settings.numbersMax = v;
-        this.$.numbersMaxValue.textContent = String(v);
-        this.updateNumbersRangeText();
-        this.saveSoon();
-        this.updateCountsRow();
-        if (this.currentQuestion && this.currentQuestion.module === 'numbers' && this.currentQuestion.number > v) {
-          this.nextQuestion({ forceModule: 'numbers', keepFeedback: false });
-        }
-      });
+      this.$.numbersMinRange.addEventListener('input', () => this.applyNumbersRangeFromControls('min'));
+      this.$.numbersMaxRange.addEventListener('input', () => this.applyNumbersRangeFromControls('max'));
       this.$.numbersRequireTyping.addEventListener('change', () => {
         this.state.settings.numbersRequireTyping = !!this.$.numbersRequireTyping.checked;
         this.saveSoon();
         if (this.currentQuestion && this.currentQuestion.module === 'numbers') {
           this.renderQuestion(this.currentQuestion, { keepFeedback: false });
+        }
+      });
+      this.$.numbersSequential.addEventListener('change', () => {
+        this.state.settings.numbersSequential = !!this.$.numbersSequential.checked;
+        this.practiceRequested = false;
+        this.numbersStatus = this.state.settings.numbersSequential
+          ? 'Order mode: next Numbers question will move through the range.'
+          : '';
+        this.saveSoon();
+        if (this.currentQuestion && this.currentQuestion.module === 'numbers') {
+          this.$.practiceIndicator.textContent = this.numbersStatus;
         }
       });
 
@@ -4381,11 +4405,15 @@ mean/nice
       this.$.tense_imperfect.checked = !!this.state.settings.tensesEnabled.imperfect;
       this.$.tense_irregular_only.checked = !!this.state.settings.tensesIrregularOnly;
 
-      const numbersMax = clampNumberMax(this.state.settings.numbersMax);
-      this.state.settings.numbersMax = numbersMax;
-      this.$.numbersMaxRange.value = String(numbersMax);
-      this.$.numbersMaxValue.textContent = String(numbersMax);
+      const numbersRange = this.getNumbersRange();
+      this.state.settings.numbersMin = numbersRange.min;
+      this.state.settings.numbersMax = numbersRange.max;
+      this.$.numbersMinRange.value = String(numbersRange.min);
+      this.$.numbersMinValue.textContent = String(numbersRange.min);
+      this.$.numbersMaxRange.value = String(numbersRange.max);
+      this.$.numbersMaxValue.textContent = String(numbersRange.max);
       this.$.numbersRequireTyping.checked = !!this.state.settings.numbersRequireTyping;
+      this.$.numbersSequential.checked = !!this.state.settings.numbersSequential;
       this.updateNumbersRangeText();
 
       // Vocab mode
@@ -4436,14 +4464,39 @@ mean/nice
       return (this.state.moduleChoices.newModulesAnswerMode || 'spelling') === 'spelling';
     },
 
+    getNumbersRange() {
+      return normalizeNumberRange(this.state.settings.numbersMin, this.state.settings.numbersMax);
+    },
+
+    applyNumbersRangeFromControls(changed) {
+      let min = clampNumberBound(this.$.numbersMinRange.value, 1);
+      let max = clampNumberBound(this.$.numbersMaxRange.value, 1000);
+      if (min > max) {
+        if (changed === 'min') max = min;
+        else min = max;
+      }
+      this.state.settings.numbersMin = min;
+      this.state.settings.numbersMax = max;
+      this.$.numbersMinRange.value = String(min);
+      this.$.numbersMaxRange.value = String(max);
+      this.$.numbersMinValue.textContent = String(min);
+      this.$.numbersMaxValue.textContent = String(max);
+      this.updateNumbersRangeText();
+      this.saveSoon();
+      this.updateCountsRow();
+      if (this.currentQuestion && this.currentQuestion.module === 'numbers' && (this.currentQuestion.number < min || this.currentQuestion.number > max)) {
+        this.nextQuestion({ forceModule: 'numbers', keepFeedback: false });
+      }
+    },
+
     updateNumbersRangeText() {
-      const max = clampNumberMax(this.state.settings.numbersMax);
-      const rangeText = `1-${max}`;
+      const { min, max } = this.getNumbersRange();
+      const rangeText = `${min}-${max}`;
       if (this.$.numbersTitle) this.$.numbersTitle.textContent = `Random Number (${rangeText})`;
       if (this.$.numbersLead) {
         this.$.numbersLead.innerHTML = this.state.settings.numbersRequireTyping
-          ? `Type the Spanish spelling for numbers from <strong>${rangeText}</strong>.`
-          : `Reveal the Spanish spelling for numbers from <strong>${rangeText}</strong>. In mixed-module mode, <strong>Next</strong> may rotate to a different module.`;
+          ? `Type the Spanish spelling for numbers from <strong>${rangeText}</strong>${this.state.settings.numbersSequential ? ', in order' : ''}.`
+          : `Reveal the Spanish spelling for numbers from <strong>${rangeText}</strong>${this.state.settings.numbersSequential ? ', in order' : ''}. In mixed-module mode, <strong>Next</strong> may rotate to a different module.`;
       }
     },
 
@@ -4575,11 +4628,12 @@ mean/nice
       const hidden = this.state.hiddenItems;
 
       if (moduleKey === 'numbers') {
-        const total = clampNumberMax(this.state.settings.numbersMax);
+        const { min, max } = this.getNumbersRange();
+        const total = max - min + 1;
         const hiddenCount = Object.keys(hidden).filter((k) => {
           if (!k.startsWith('number-')) return false;
           const n = parseInt(k.replace('number-', ''), 10);
-          return Number.isFinite(n) && n >= 1 && n <= total;
+          return Number.isFinite(n) && n >= min && n <= max;
         }).length;
         return { total, available: Math.max(0, total - hiddenCount) };
       }
@@ -4899,17 +4953,35 @@ mean/nice
     // ----- Numbers -----
     generateNumbersQuestion() {
       const hidden = this.state.hiddenItems;
-      const max = clampNumberMax(this.state.settings.numbersMax);
+      const { min, max } = this.getNumbersRange();
+      const rangeSize = max - min + 1;
 
       // quick availability check
       if (this.getModuleCounts('numbers').available === 0) return null;
 
       let n = null;
 
+      if (this.state.settings.numbersSequential) {
+        const start = (this.currentNumber != null && this.currentNumber >= min && this.currentNumber <= max)
+          ? this.currentNumber + 1
+          : min;
+        for (let i = 0; i < rangeSize; i++) {
+          const candidate = min + ((((start - min) + i) % rangeSize) + rangeSize) % rangeSize;
+          if (!hidden[`number-${candidate}`]) {
+            n = candidate;
+            break;
+          }
+        }
+        if (n != null) {
+          this.practiceRequested = false;
+          this.numbersStatus = '';
+        }
+      }
+
       // If "Need more practice" was requested, generate a similar number next time Numbers appears.
-      if (this.practiceRequested && this.currentNumber != null) {
+      if (n == null && this.practiceRequested && this.currentNumber != null) {
         for (let i = 0; i < 20; i++) {
-          const candidate = generateSimilar(this.currentNumber, max);
+          const candidate = generateSimilar(this.currentNumber, min, max);
           if (!hidden[`number-${candidate}`]) {
             n = candidate;
             break;
@@ -4924,9 +4996,9 @@ mean/nice
       // Otherwise random, avoiding hidden and immediate repeats.
       if (n == null) {
         for (let i = 0; i < 2000; i++) {
-          const candidate = rand(max);
+          const candidate = rand(min, max);
           if (hidden[`number-${candidate}`]) continue;
-          if (candidate === this.currentNumber) continue;
+          if (rangeSize > 1 && candidate === this.currentNumber) continue;
           n = candidate;
           break;
         }
@@ -4991,6 +5063,12 @@ mean/nice
 
     markNeedPractice() {
       if (!this.currentQuestion || this.currentQuestion.module !== 'numbers') return;
+      if (this.state.settings.numbersSequential) {
+        this.practiceRequested = false;
+        this.numbersStatus = 'Order mode is on: next Numbers question will continue in order.';
+        this.$.practiceIndicator.textContent = this.numbersStatus;
+        return;
+      }
       this.practiceRequested = true;
       this.numbersStatus = 'Marked for practice: next Numbers question will be similar.';
       this.$.practiceIndicator.textContent = this.numbersStatus;
@@ -5830,13 +5908,27 @@ mean/nice
       results.push({ ok: !vocabSample || this.generateVocabQuestion()?.mode === 'text', label: 'Vocab generator returns text mode' });
       const mayoSample = modules.mayo_madness_1.generateQuestion(this);
       results.push({ ok: !!mayoSample && mayoSample.mode === 'text' && mayoSample.acceptable instanceof Set, label: 'Mayo Madness Level 1 Vocab generates text questions' });
+      const priorNumbersMin = this.state.settings.numbersMin;
       const priorNumbersMax = this.state.settings.numbersMax;
+      const priorNumbersSequential = this.state.settings.numbersSequential;
       const priorCurrentNumber = this.currentNumber;
+      const priorHiddenItems = { ...this.state.hiddenItems };
+      for (let n = 8; n <= 12; n++) delete this.state.hiddenItems[`number-${n}`];
+      this.state.settings.numbersMin = 8;
       this.state.settings.numbersMax = 12;
+      this.state.settings.numbersSequential = false;
       const rangedNumber = this.generateNumbersQuestion();
-      results.push({ ok: !!rangedNumber && rangedNumber.number >= 1 && rangedNumber.number <= 12, label: 'Numbers range setting limits generated questions' });
+      results.push({ ok: !!rangedNumber && rangedNumber.number >= 8 && rangedNumber.number <= 12, label: 'Numbers range setting limits generated questions' });
+      this.state.settings.numbersSequential = true;
+      this.currentNumber = 10;
+      const orderedNumber = this.generateNumbersQuestion();
+      results.push({ ok: !!orderedNumber && orderedNumber.number === 11, label: 'Numbers order mode advances sequentially' });
+      this.state.settings.numbersMin = priorNumbersMin;
       this.state.settings.numbersMax = priorNumbersMax;
+      this.state.settings.numbersSequential = priorNumbersSequential;
       this.currentNumber = priorCurrentNumber;
+      this.state.hiddenItems = priorHiddenItems;
+      this.state.hiddenQuestions = this.state.hiddenItems;
       results.push({ ok: typeof this.handleRevealKey === 'function' && typeof this.handleAdvanceKey === 'function', label: 'Keyboard shortcuts registered' });
       const missingToggles = MODULES
         .map((m) => m.key)
