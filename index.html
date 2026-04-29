@@ -423,6 +423,40 @@ Developer note:
     .modal h3{margin:14px 0 8px}
     .modal p{color:var(--muted); margin:0 0 10px}
     .modal .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+    .number-range-control{
+      align-items:flex-end;
+    }
+    .number-range-control label{
+      flex:1 0 100%;
+      font-weight:800;
+    }
+    .number-range-end{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:210px;
+      flex:1;
+    }
+    .number-range-end span{
+      min-width:44px;
+      color:var(--muted);
+      font-size:.9rem;
+      font-weight:800;
+    }
+    .number-range-end input[type="range"]{
+      flex:1;
+      min-width:120px;
+    }
+    .number-range-end input[type="number"]{
+      width:82px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:.95rem;
+      font-weight:800;
+      background:#fff;
+    }
+    .number-range-end input[type="number"]:focus-visible{outline:3px solid var(--focus); outline-offset:2px}
 
     .toggle{
       display:flex;
@@ -861,10 +895,18 @@ Developer note:
           </div>
           <p class="small muted">If you enable the Tenses module but select no tenses, Present will be re-enabled automatically.</p>
           <h3>Numbers</h3>
-          <div class="row">
+          <div class="row number-range-control">
             <label for="numbersMinRange">Range: <output id="numbersMinValue">1</output>-<output id="numbersMaxValue">1000</output></label>
-            <input type="range" id="numbersMinRange" min="1" max="1000" value="1" aria-label="Numbers range lower limit" />
-            <input type="range" id="numbersMaxRange" min="1" max="1000" value="1000" aria-label="Numbers range upper limit" />
+            <div class="number-range-end">
+              <span>Lower</span>
+              <input type="range" id="numbersMinRange" min="1" max="1000" value="1" aria-label="Numbers range lower limit slider" />
+              <input type="number" id="numbersMinInput" min="1" max="1000" value="1" inputmode="numeric" aria-label="Numbers range lower limit" />
+            </div>
+            <div class="number-range-end">
+              <span>Upper</span>
+              <input type="range" id="numbersMaxRange" min="1" max="1000" value="1000" aria-label="Numbers range upper limit slider" />
+              <input type="number" id="numbersMaxInput" min="1" max="1000" value="1000" inputmode="numeric" aria-label="Numbers range upper limit" />
+            </div>
           </div>
           <div class="row">
             <label class="btn small ghost"><input type="checkbox" id="numbersRequireTyping" aria-label="Require typed spelling for numbers" />&nbsp;Type and spell the number</label>
@@ -4023,8 +4065,10 @@ mean/nice
         vocab_weighted: $('vocab_weighted'),
         vocab_uniform: $('vocab_uniform'),
         numbersMinRange: $('numbersMinRange'),
+        numbersMinInput: $('numbersMinInput'),
         numbersMinValue: $('numbersMinValue'),
         numbersMaxRange: $('numbersMaxRange'),
+        numbersMaxInput: $('numbersMaxInput'),
         numbersMaxValue: $('numbersMaxValue'),
         numbersRequireTyping: $('numbersRequireTyping'),
         numbersSequential: $('numbersSequential'),
@@ -4243,8 +4287,20 @@ mean/nice
         }
       });
 
-      this.$.numbersMinRange.addEventListener('input', () => this.applyNumbersRangeFromControls('min'));
-      this.$.numbersMaxRange.addEventListener('input', () => this.applyNumbersRangeFromControls('max'));
+      this.$.numbersMinRange.addEventListener('input', () => this.applyNumbersRangeFromControls('minRange'));
+      this.$.numbersMaxRange.addEventListener('input', () => this.applyNumbersRangeFromControls('maxRange'));
+      this.$.numbersMinRange.addEventListener('change', () => this.ensureCurrentNumberInRange());
+      this.$.numbersMaxRange.addEventListener('change', () => this.ensureCurrentNumberInRange());
+      this.$.numbersMinInput.addEventListener('input', () => this.applyNumbersRangeFromControls('minInput'));
+      this.$.numbersMaxInput.addEventListener('input', () => this.applyNumbersRangeFromControls('maxInput'));
+      this.$.numbersMinInput.addEventListener('change', () => {
+        this.refreshSettingsUI();
+        this.ensureCurrentNumberInRange();
+      });
+      this.$.numbersMaxInput.addEventListener('change', () => {
+        this.refreshSettingsUI();
+        this.ensureCurrentNumberInRange();
+      });
       this.$.numbersRequireTyping.addEventListener('change', () => {
         this.state.settings.numbersRequireTyping = !!this.$.numbersRequireTyping.checked;
         this.saveSoon();
@@ -4409,8 +4465,10 @@ mean/nice
       this.state.settings.numbersMin = numbersRange.min;
       this.state.settings.numbersMax = numbersRange.max;
       this.$.numbersMinRange.value = String(numbersRange.min);
+      this.$.numbersMinInput.value = String(numbersRange.min);
       this.$.numbersMinValue.textContent = String(numbersRange.min);
       this.$.numbersMaxRange.value = String(numbersRange.max);
+      this.$.numbersMaxInput.value = String(numbersRange.max);
       this.$.numbersMaxValue.textContent = String(numbersRange.max);
       this.$.numbersRequireTyping.checked = !!this.state.settings.numbersRequireTyping;
       this.$.numbersSequential.checked = !!this.state.settings.numbersSequential;
@@ -4468,23 +4526,35 @@ mean/nice
       return normalizeNumberRange(this.state.settings.numbersMin, this.state.settings.numbersMax);
     },
 
-    applyNumbersRangeFromControls(changed) {
-      let min = clampNumberBound(this.$.numbersMinRange.value, 1);
-      let max = clampNumberBound(this.$.numbersMaxRange.value, 1000);
-      if (min > max) {
-        if (changed === 'min') max = min;
-        else min = max;
-      }
+    applyNumbersRangeFromControls(source) {
+      const readValue = (rangeEl, inputEl, fallback, preferInput) => {
+        const raw = preferInput ? inputEl.value : rangeEl.value;
+        if (preferInput && raw.trim() === '') return null;
+        return clampNumberBound(raw, fallback);
+      };
+      const minFromInput = source === 'minInput';
+      const maxFromInput = source === 'maxInput';
+      const min = readValue(this.$.numbersMinRange, this.$.numbersMinInput, 1, minFromInput);
+      const max = readValue(this.$.numbersMaxRange, this.$.numbersMaxInput, 1000, maxFromInput);
+      if (min == null || max == null) return;
+
       this.state.settings.numbersMin = min;
       this.state.settings.numbersMax = max;
+      const range = this.getNumbersRange();
       this.$.numbersMinRange.value = String(min);
       this.$.numbersMaxRange.value = String(max);
-      this.$.numbersMinValue.textContent = String(min);
-      this.$.numbersMaxValue.textContent = String(max);
+      if (source !== 'minInput') this.$.numbersMinInput.value = String(min);
+      if (source !== 'maxInput') this.$.numbersMaxInput.value = String(max);
+      this.$.numbersMinValue.textContent = String(range.min);
+      this.$.numbersMaxValue.textContent = String(range.max);
       this.updateNumbersRangeText();
       this.saveSoon();
       this.updateCountsRow();
-      if (this.currentQuestion && this.currentQuestion.module === 'numbers' && (this.currentQuestion.number < min || this.currentQuestion.number > max)) {
+    },
+
+    ensureCurrentNumberInRange() {
+      const range = this.getNumbersRange();
+      if (this.currentQuestion && this.currentQuestion.module === 'numbers' && (this.currentQuestion.number < range.min || this.currentQuestion.number > range.max)) {
         this.nextQuestion({ forceModule: 'numbers', keepFeedback: false });
       }
     },
