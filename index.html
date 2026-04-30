@@ -11,11 +11,13 @@ Changelog: 2026-02-13
 - Added responsive practice-only controls (horizontal scroll + mobile dropdown).
 - Added a11y improvements (sr-only helper text, deterministic settings focus, dialog semantics preserved).
 - Added startup and on-demand smoke checks via runAutomatedChecks().
+- Added Numbers lower/upper range controls, typed endpoint inputs, typed-spelling mode, and ordered practice.
+- Added Honors Vocab plus Mayo Madness Level 1 and Level 2 vocab modules.
 
 localStorage schema (key: spanish_app_v2_state):
 {
   "version": 2,
-  "settings": { "...": "existing + new toggles/choices" },
+  "settings": { "modulesEnabled": "...", "numbersMin": 1, "numbersMax": 1000, "numbersRequireTyping": false, "numbersSequential": false, "...": "existing + new toggles/choices" },
   "hiddenItems": { "question-id": true },
   "itemScores": { "question-id": 0..5 },
   "moduleChoices": { "practiceMix": 0..100, "showKeyHintStrip": true|false, "newModulesAnswerMode": "spelling"|"mixed" },
@@ -25,10 +27,14 @@ localStorage schema (key: spanish_app_v2_state):
 
 Manual test checklist:
 [ ] New modules appear in Settings and can be toggled.
+[ ] Numbers lower/upper sliders and typed endpoints normalize cleanly and update generated numbers.
+[ ] Numbers typed-spelling mode requires a correct answer before Next.
+[ ] Numbers order mode advances through the selected range and wraps.
 [ ] Space/Arrow behavior respects typing focus + IME composition.
 [ ] Two-stage reveal works (hint first, full reveal second).
 [ ] Low-scored items appear more often over repeated practice.
-[ ] Export/import round-trips hiddenItems/itemScores/settings/moduleChoices.
+[ ] Export/import round-trips hiddenItems/itemScores/settings/moduleChoices, including Numbers settings.
+[ ] Mayo Madness Level 1 and Level 2 generate text questions with slash-answer variants accepted.
 [ ] Reset progress offers undo toast for 5 seconds.
 [ ] runAutomatedChecks() reports pass/fail in Settings and console.
 
@@ -461,13 +467,22 @@ Developer note:
     .toggle{
       display:flex;
       align-items:center;
-      justify-content:space-between;
+      justify-content:flex-start;
       gap:12px;
       padding:10px 12px;
       border:1px solid var(--border);
       border-radius:12px;
       background:#fff;
       margin-bottom:8px;
+    }
+    .toggle > div{flex:0 1 430px; min-width:0}
+    .toggle > label{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:4px 8px;
+      margin-left:0;
+      flex:0 0 auto;
     }
     .toggle .label{font-weight:900}
     .toggle .desc{color:var(--muted); font-size:.9rem; margin-top:2px}
@@ -626,7 +641,7 @@ Developer note:
     <header class="topbar">
       <div class="brand">
         <div class="title">Spanish Practice</div>
-        <div class="subtitle" id="subtitle">Numbers (1–1000) by default — enable more modules in Settings.</div>
+        <div class="subtitle" id="subtitle">Practice Numbers by range, plus vocab and grammar modules from Settings.</div>
       </div>
       <div class="top-actions">
         <span class="chip" id="activeModuleChip" title="Active module">
@@ -647,7 +662,7 @@ Developer note:
     </div>
 
     <main class="card" id="mainCard">
-      <div class="top-row">
+      <div class="top-row" style="display:none" aria-hidden="true">
         <div class="counts" id="countsRow"></div>
         <div class="counts"><span class="muted">Data:</span> <code>localStorage</code></div>
       </div>
@@ -658,6 +673,7 @@ Developer note:
           <button class="btn small" data-solo="commands" id="soloCommandsBtn" aria-label="Practice only Command tone">Practice only Command tone</button>
           <button class="btn small" data-solo="vocab" id="soloVocabBtn" aria-label="Practice only Honors Vocab">Practice only Honors Vocab</button>
           <button class="btn small" data-solo="mayo_madness_1" id="soloMayoMadness1Btn" aria-label="Practice only Mayo Madness Level 1 Vocab">Practice only Mayo Madness Level 1 Vocab</button>
+          <button class="btn small" data-solo="mayo_madness_2" id="soloMayoMadness2Btn" aria-label="Practice only Mayo Madness Level 2 Vocab">Practice only Mayo Madness Level 2 Vocab</button>
           <button class="btn small" data-solo="reflexive" id="soloReflexiveBtn" aria-label="Practice only Reflexive">Practice only Reflexive</button>
           <button class="btn small" data-solo="tenses" id="soloTensesBtn" aria-label="Practice only Tenses">Practice only Tenses</button>
           <button class="btn small" data-solo="days" id="soloDaysBtn" aria-label="Practice only Days">Practice only Days</button>
@@ -683,6 +699,7 @@ Developer note:
             <option value="commands">Command tone</option>
             <option value="vocab">Honors Vocab</option>
             <option value="mayo_madness_1">Mayo Madness Level 1 Vocab</option>
+            <option value="mayo_madness_2">Mayo Madness Level 2 Vocab</option>
             <option value="reflexive">Reflexive</option>
             <option value="tenses">Tenses</option>
             <option value="days">Days</option>
@@ -704,9 +721,9 @@ Developer note:
       </div>
       <div class="key-hint-strip" id="keyHintStrip" aria-label="Global keyboard shortcuts">
         <span><span class="key-pill">Esc</span> Close modal</span>
-        <span><span class="key-pill">Space</span> Hint / Reveal</span>
-        <span><span class="key-pill">→</span> Reveal full / Next</span>
-        <span><span class="key-pill">←</span> Numbers: Need practice</span>
+        <span><span class="key-pill">Space</span> Hint / Reveal answer</span>
+        <span><span class="key-pill">→</span> Reveal full / Next allowed item</span>
+        <span><span class="key-pill">←</span> Numbers: similar practice unless order mode is on</span>
       </div>
       <p class="sr-only" id="shortcutHelpText">Global shortcuts work when no text input is focused and IME composition is inactive.</p>
 
@@ -714,10 +731,10 @@ Developer note:
         <button class="btn small ghost" id="neverBtn" aria-label="Never show this question again">🙈 Never show this again</button>
       </div>
 
-      <!-- Numbers section (preserves original 1–1000 behavior and UX) -->
+      <!-- Numbers section (range, ordered mode, and optional typed-spelling mode) -->
       <section id="numbersSection">
-        <h2 id="numbersTitle">Random Number (1–1000)</h2>
-        <p class="lead" id="numbersLead">Reveal the Spanish spelling. In mixed-module mode, <strong>Next</strong> may rotate to a different module.</p>
+        <h2 id="numbersTitle">Random Number (1-1000)</h2>
+        <p class="lead" id="numbersLead">Reveal or type the Spanish spelling for your selected range. In mixed-module mode, <strong>Next</strong> may rotate to a different module.</p>
 
         <div class="display" id="numberDisplay" aria-live="polite">?</div>
         <div class="spanish" id="numberSpanish" aria-live="polite"></div>
@@ -737,15 +754,15 @@ Developer note:
         </div>
 
         <div class="practice-indicator" id="practiceIndicator" aria-hidden="false"></div>
-        <div class="keys" id="numbersKeysHint">Keyboard: <strong>Space</strong>=Reveal &nbsp; <strong>→</strong>=Next &nbsp; <strong>←</strong>=Need practice</div>
-        <div class="hint" id="numbersHint">If you mark "Need more practice", the next <em>Numbers</em> question will be similar to the current one; the following Numbers question after that will be random again.</div>
+        <div class="keys" id="numbersKeysHint">Keyboard: <strong>Space</strong>=Hint/Reveal &nbsp; <strong>→</strong>=Reveal full/Next &nbsp; <strong>←</strong>=Need practice</div>
+        <div class="hint" id="numbersHint">Numbers can use a custom lower/upper range, optional typed spelling, and optional order mode. If order mode is off, "Need more practice" makes the next Numbers question similar.</div>
 
         <div class="divider"></div>
         <button class="btn small" id="numbersGuideBtn" aria-label="How Spanish numbers work">How Spanish Numbers Work</button>
-        <div class="hint"><small>Rules implemented: 1–15 irregular, 16–19 <em>dieci-</em>, 21–29 <em>veinti-</em> (with accents where required), tens and hundreds according to standard Spanish.</small></div>
+        <div class="hint"><small>Settings can limit Numbers to any range from 1–1000, require typed spelling, or move through the selected range in order.</small></div>
       </section>
 
-      <!-- Generic QA section (Vocab / Commands / Reflexive / Tenses) -->
+      <!-- Generic QA section (Vocab / Mayo Madness / Commands / Reflexive / Tenses / extra modules) -->
       <section id="qaSection" style="display:none">
         <div class="qa-wrap">
           <h2 id="qaTitle">Question</h2>
@@ -803,7 +820,7 @@ Developer note:
         <summary>Modules</summary>
         <div class="accordion-inner">
           <div class="toggle">
-            <div><div class="label">Numbers (1–1000)</div><div class="desc">Practice Spanish number spelling in a chosen range.</div></div>
+            <div><div class="label">Numbers</div><div class="desc">Practice Spanish number spelling in a chosen range.</div></div>
             <label><input type="checkbox" id="toggle_numbers" aria-label="Toggle numbers module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
           <div class="toggle">
@@ -817,6 +834,10 @@ Developer note:
           <div class="toggle">
             <div><div class="label">Mayo Madness Level 1 Vocab</div><div class="desc">Classroom objects and people vocabulary.</div></div>
             <label><input type="checkbox" id="toggle_mayo_madness_1" aria-label="Toggle Mayo Madness Level 1 Vocab module" /><span class="switch" aria-hidden="true"></span></label>
+          </div>
+          <div class="toggle">
+            <div><div class="label">Mayo Madness Level 2 Vocab</div><div class="desc">More classroom vocabulary with slash-answer variants.</div></div>
+            <label><input type="checkbox" id="toggle_mayo_madness_2" aria-label="Toggle Mayo Madness Level 2 Vocab module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
           <div class="toggle">
             <div><div class="label">Reflexive verbs</div><div class="desc">Present tense only (accepts <em>se llama</em> or <em>llama</em>).</div></div>
@@ -912,6 +933,7 @@ Developer note:
             <label class="btn small ghost"><input type="checkbox" id="numbersRequireTyping" aria-label="Require typed spelling for numbers" />&nbsp;Type and spell the number</label>
             <label class="btn small ghost"><input type="checkbox" id="numbersSequential" aria-label="Practice numbers in order" />&nbsp;Go in order</label>
           </div>
+          <p class="small muted">Use the sliders or type exact endpoints. If the endpoints cross, the app practices the normalized range between them.</p>
           <h3>Vocab selection</h3>
           <div class="row">
             <label class="btn small ghost"><input type="radio" name="vocabMode" value="weighted" id="vocab_weighted" aria-label="Weighted vocab selection" />&nbsp;Complexity-weighted (default)</label>
@@ -928,7 +950,7 @@ Developer note:
             <label class="btn small ghost"><input type="radio" name="newModulesAnswerMode" value="spelling" id="newModulesMode_spelling" aria-label="Spelling only mode for new modules" />&nbsp;Spelling only (default)</label>
             <label class="btn small ghost"><input type="radio" name="newModulesAnswerMode" value="mixed" id="newModulesMode_mixed" aria-label="Mixed mode for new modules" />&nbsp;Mixed (spelling + multiple choice)</label>
           </div>
-          <p class="small muted">Applies only to Days, Months, Seasons, Time, and Colors.</p>
+          <p class="small muted">Applies only to Days, Months, Seasons, Time, and Colors. Honors Vocab, Mayo Madness, and newer text modules stay spelling-based.</p>
         </div>
       </details>
 
@@ -938,7 +960,7 @@ Developer note:
           <div class="row">
             <label class="btn small ghost"><input type="checkbox" id="toggleKeyHintStrip" aria-label="Show key hint strip" />&nbsp;Show key-hint strip</label>
           </div>
-          <p class="small muted">Space is global hint/reveal when text input is not focused. Enter submits text answers.</p>
+          <p class="small muted">Space is global hint/reveal when text input is not focused. Enter submits text answers, including typed Numbers mode.</p>
         </div>
       </details>
 
@@ -986,7 +1008,7 @@ Developer note:
       <div class="modal-head">
         <div>
           <div style="font-weight:900; font-size:1.05rem" id="numbersGuideTitle">How Spanish Numbers Work (Quick Guide)</div>
-          <div class="muted small">Same rules as the original 1–1000 module.</div>
+          <div class="muted small">Applies to any selected range from 1-1000.</div>
         </div>
         <button class="icon-btn" id="numbersGuideCloseBtn" aria-label="Close numbers guide">✕</button>
       </div>
@@ -1002,6 +1024,9 @@ Developer note:
         <li><strong>200–900</strong>: memorize hundreds (doscientos, quinientos, setecientos)</li>
         <li><strong>101–999</strong>: hundreds + rest → doscientos treinta y cuatro</li>
         <li><strong>1000</strong>: mil (not <em>un mil</em>)</li>
+        <li><strong>Range</strong>: Settings can limit practice to a lower and upper endpoint; crossed endpoints are normalized automatically.</li>
+        <li><strong>Type and spell</strong>: when enabled, you must type the Spanish spelling before moving on.</li>
+        <li><strong>Go in order</strong>: when enabled, Numbers walks through the selected range and wraps to the beginning.</li>
       </ul>
     </div>
   </div>
@@ -1051,11 +1076,12 @@ Developer note:
       </div>
 
       <ul>
-        <li><strong>⚙ Settings</strong>: enable modules (Honors Vocab, Mayo Madness Vocab, Commands, Reflexive, Tenses).</li>
-        <li><strong>Enter</strong>: submit answers (typing modules).</li>
+        <li><strong>⚙ Settings</strong>: enable modules, choose the Numbers range, turn on typed Numbers, or make Numbers go in order.</li>
+        <li><strong>Practice only</strong>: jump straight to Numbers, Honors Vocab, Mayo Madness Level 1/2, or any enabled module.</li>
+        <li><strong>Enter</strong>: submit answers in typing modules and typed Numbers mode.</li>
         <li><strong>Accent toolbar</strong>: inserts á é í ó ú ñ ü at your cursor.</li>
         <li><strong>🙈 Never show again</strong>: hides the current question (manage/restore in Settings).</li>
-        <li><strong>Numbers</strong>: Space reveal, → next, ← mark for practice (same as original).</li>
+        <li><strong>Numbers</strong>: Space reveals, → advances when allowed, and ← asks for similar practice unless order mode is on.</li>
       </ul>
 
       <div class="row">
@@ -1123,6 +1149,7 @@ Developer note:
     { key: 'commands',  name: 'Command tone' },
     { key: 'vocab',     name: 'Honors Vocab' },
     { key: 'mayo_madness_1', name: 'Mayo Madness Level 1 Vocab' },
+    { key: 'mayo_madness_2', name: 'Mayo Madness Level 2 Vocab' },
     { key: 'reflexive', name: 'Reflexive verbs' },
     { key: 'tenses',    name: 'Tenses' },
     { key: 'days',      name: 'Days' },
@@ -2277,13 +2304,23 @@ mean/nice
   const MAYO_MADNESS_LEVEL_1_POOL = [
     { id: 'mayo1-lapiz', sp: 'el lápiz', en: 'the pencil' },
     { id: 'mayo1-silla', sp: 'la silla', en: 'the chair' },
-    { id: 'mayo1-escritorio', sp: 'el escritorio', en: 'the desk' },
+    { id: 'mayo1-escritorio', sp: 'el escritorio', en: 'the desk', acceptable: ['el escritorio', 'el pupitre'] },
     { id: 'mayo1-suelo', sp: 'el suelo / el piso', en: 'the floor', acceptable: ['el suelo', 'el piso'] },
     { id: 'mayo1-reloj', sp: 'el reloj', en: 'the clock' },
     { id: 'mayo1-cuaderno', sp: 'el cuaderno', en: 'the notebook' },
     { id: 'mayo1-papel', sp: 'el papel', en: 'the paper' },
     { id: 'mayo1-mochila', sp: 'la mochila', en: 'the backpack' },
     { id: 'mayo1-maestro', sp: 'el maestro / la maestra', en: 'the teacher', acceptable: ['el maestro', 'la maestra'] }
+  ];
+
+  const MAYO_MADNESS_LEVEL_2_POOL = [
+    { id: 'mayo2-libro', sp: 'el libro', en: 'book' },
+    { id: 'mayo2-puerta', sp: 'la puerta', en: 'door' },
+    { id: 'mayo2-ventana', sp: 'la ventana', en: 'window' },
+    { id: 'mayo2-computadora', sp: 'la computadora / el ordenador', en: 'computer', acceptable: ['la computadora', 'el ordenador'] },
+    { id: 'mayo2-bandera', sp: 'la bandera', en: 'flag' },
+    { id: 'mayo2-pizarra', sp: 'la pizarra / la pizarra blanca', en: 'whiteboard', acceptable: ['la pizarra', 'la pizarra blanca'] },
+    { id: 'mayo2-mochila', sp: 'la mochila', en: 'backpack' }
   ];
 
   const COLOR_CONFUSABLES = {
@@ -3274,6 +3311,7 @@ mean/nice
           commands: false,
           vocab: false,
           mayo_madness_1: false,
+          mayo_madness_2: false,
           reflexive: false,
           tenses: false,
           days: true,
@@ -3668,6 +3706,27 @@ mean/nice
       }
     },
 
+    // === MODULE: MAYO MADNESS LEVEL 2 VOCAB ===
+    mayo_madness_2: {
+      generateQuestion(app) {
+        const hidden = app.state.hiddenItems;
+        const recent = new Set(app.recentByModule.mayo_madness_2.slice(-3));
+        const pool = MAYO_MADNESS_LEVEL_2_POOL.filter(x => !hidden[x.id] && !recent.has(x.id));
+        const fallback = MAYO_MADNESS_LEVEL_2_POOL.filter(x => !hidden[x.id]);
+        const item = pickByWeakScore(pool.length ? pool : fallback, app.state.itemScores, recent);
+        if (!item) return null;
+        const answers = item.acceptable || [item.sp];
+        return {
+          module: 'mayo_madness_2',
+          id: item.id,
+          mode: 'text',
+          prompt: `Translate to Spanish: <strong>${escapeHtml(item.en)}</strong>`,
+          expectedDisplay: item.sp,
+          acceptable: buildAcceptableAnswerSet(answers)
+        };
+      }
+    },
+
     // === MODULE: PRICES ===
     prices: {
       generateQuestion(app) {
@@ -3871,6 +3930,7 @@ mean/nice
       commands: [],
       vocab: [],
       mayo_madness_1: [],
+      mayo_madness_2: [],
       reflexive: [],
       tenses: [],
       days: [],
@@ -3980,6 +4040,7 @@ mean/nice
         soloCommandsBtn: $('soloCommandsBtn'),
         soloVocabBtn: $('soloVocabBtn'),
         soloMayoMadness1Btn: $('soloMayoMadness1Btn'),
+        soloMayoMadness2Btn: $('soloMayoMadness2Btn'),
         soloReflexiveBtn: $('soloReflexiveBtn'),
         soloTensesBtn: $('soloTensesBtn'),
         soloDaysBtn: $('soloDaysBtn'),
@@ -4041,6 +4102,7 @@ mean/nice
         toggle_commands: $('toggle_commands'),
         toggle_vocab: $('toggle_vocab'),
         toggle_mayo_madness_1: $('toggle_mayo_madness_1'),
+        toggle_mayo_madness_2: $('toggle_mayo_madness_2'),
         toggle_reflexive: $('toggle_reflexive'),
         toggle_tenses: $('toggle_tenses'),
         toggle_days: $('toggle_days'),
@@ -4154,6 +4216,7 @@ mean/nice
         this.$.soloCommandsBtn,
         this.$.soloVocabBtn,
         this.$.soloMayoMadness1Btn,
+        this.$.soloMayoMadness2Btn,
         this.$.soloReflexiveBtn,
         this.$.soloTensesBtn,
         this.$.soloDaysBtn,
@@ -4496,6 +4559,7 @@ mean/nice
       this.$.soloCommandsBtn.disabled = !enabled.commands;
       this.$.soloVocabBtn.disabled = !enabled.vocab;
       this.$.soloMayoMadness1Btn.disabled = !enabled.mayo_madness_1;
+      this.$.soloMayoMadness2Btn.disabled = !enabled.mayo_madness_2;
       this.$.soloReflexiveBtn.disabled = !enabled.reflexive;
       this.$.soloTensesBtn.disabled = !enabled.tenses;
       this.$.soloDaysBtn.disabled = !enabled.days;
@@ -4687,7 +4751,8 @@ mean/nice
         if (counts.numbers.available > 0) {
           this.state.settings.modulesEnabled.numbers = true;
           this.saveSoon();
-          this.showBanner('All modules were disabled. Numbers (1–1000) was re-enabled.');
+          const { min, max } = this.getNumbersRange();
+          this.showBanner(`All modules were disabled. Numbers (${min}-${max}) was re-enabled.`);
         } else {
           this.showBanner('<strong>No practice items available.</strong> You appear to have hidden everything. Restore some hidden questions.');
         }
@@ -4751,6 +4816,12 @@ mean/nice
         const total = MAYO_MADNESS_LEVEL_1_POOL.length;
         let hiddenCount = 0;
         for (const q of MAYO_MADNESS_LEVEL_1_POOL) if (hidden[q.id]) hiddenCount++;
+        return { total, available: Math.max(0, total - hiddenCount) };
+      }
+      if (moduleKey === 'mayo_madness_2') {
+        const total = MAYO_MADNESS_LEVEL_2_POOL.length;
+        let hiddenCount = 0;
+        for (const q of MAYO_MADNESS_LEVEL_2_POOL) if (hidden[q.id]) hiddenCount++;
         return { total, available: Math.max(0, total - hiddenCount) };
       }
       if (moduleKey === 'months') {
@@ -4903,6 +4974,7 @@ mean/nice
       if (moduleKey === 'numbers') return 2.5;
       if (moduleKey === 'vocab') for (const x of this.vocab) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'mayo_madness_1') for (const x of MAYO_MADNESS_LEVEL_1_POOL) if (!hidden[x.id]) ids.push(x.id);
+      else if (moduleKey === 'mayo_madness_2') for (const x of MAYO_MADNESS_LEVEL_2_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'commands') for (const x of this.commandPool) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'reflexive') for (const x of this.reflexivePool) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'tenses') for (const x of this.tensesPool) if (!hidden[x.id] && this.isTenseItemAllowed(x)) ids.push(x.id);
@@ -5048,7 +5120,7 @@ mean/nice
         }
       }
 
-      // If "Need more practice" was requested, generate a similar number next time Numbers appears.
+      // If "Need more practice" was requested and order mode is off, generate a similar number next time Numbers appears.
       if (n == null && this.practiceRequested && this.currentNumber != null) {
         for (let i = 0; i < 20; i++) {
           const candidate = generateSimilar(this.currentNumber, min, max);
@@ -5384,7 +5456,7 @@ mean/nice
         this.$.numberTypingBlock.style.display = typingOn ? '' : 'none';
         this.$.submitNumberBtn.style.display = typingOn ? '' : 'none';
         this.$.revealBtn.textContent = typingOn ? 'Show answer' : 'Reveal in Spanish';
-        this.setNumberFeedback(typingOn ? 'Type the full Spanish spelling, then press Enter or Submit.' : '', 'neutral');
+        this.setNumberFeedback(typingOn ? 'Type the full Spanish spelling, then press Enter or Submit. Accents are optional for correctness.' : '', 'neutral');
         if (typingOn) {
           this.$.numberAnswerInput.value = '';
           setTimeout(() => this.$.numberAnswerInput.focus(), 0);
@@ -5395,7 +5467,7 @@ mean/nice
         const rotationOnlyNumbers = enabled.length === 1 && enabled[0] === 'numbers';
         this.$.nextNumbersBtn.textContent = rotationOnlyNumbers ? 'Next Number' : 'Next';
 
-        // Numbers hint: show practice behavior reminder
+        // Numbers hint: show range/order/typing behavior reminder
         this.$.numbersHint.style.display = '';
 
         if (!keepFeedback) {
@@ -5665,6 +5737,11 @@ mean/nice
       if (id.startsWith('mayo1-')) {
         const v = MAYO_MADNESS_LEVEL_1_POOL.find((item) => item.id === id);
         if (v) return `Mayo Madness Level 1 Vocab: "${v.en}" -> ${v.sp}`;
+        return id;
+      }
+      if (id.startsWith('mayo2-')) {
+        const v = MAYO_MADNESS_LEVEL_2_POOL.find((item) => item.id === id);
+        if (v) return `Mayo Madness Level 2 Vocab: "${v.en}" -> ${v.sp}`;
         return id;
       }
       if (id.startsWith('cmd-')) {
@@ -5953,7 +6030,7 @@ mean/nice
     runAutomatedChecks(opts = {}) {
       const { startup = false } = opts;
       const results = [];
-      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'mayo_madness_1', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'];
+      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'mayo_madness_1', 'mayo_madness_2', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'];
       const hasModules = requiredModules.every((key) => MODULES.some((m) => m.key === key) && modules[key]);
       results.push({ ok: hasModules, label: 'Expanded modules registered (including Ser/Estar + Gustar split)' });
       results.push({ ok: !MODULES.some((m) => m.key === 'ser_estar_gustar'), label: 'Deprecated ser_estar_gustar module removed from registry' });
@@ -5963,6 +6040,7 @@ mean/nice
       results.push({ ok: TIME_POOL.length >= 30, label: 'Time pool has >= 30 items' });
       results.push({ ok: COLORS_POOL.length >= 15, label: 'Colors pool has >= 15 items' });
       results.push({ ok: MAYO_MADNESS_LEVEL_1_POOL.length === 9, label: 'Mayo Madness Level 1 Vocab pool has 9 items' });
+      results.push({ ok: MAYO_MADNESS_LEVEL_2_POOL.length === 7, label: 'Mayo Madness Level 2 Vocab pool has 7 items' });
       results.push({ ok: PRICES_POOL.length >= 30, label: 'Prices pool has >= 30 items' });
       results.push({ ok: WEATHER_POOL.length >= 20, label: 'Weather pool has >= 20 items' });
       results.push({ ok: CLOTHING_POOL.length >= 20, label: 'Clothing pool has >= 20 items' });
@@ -5978,6 +6056,11 @@ mean/nice
       results.push({ ok: !vocabSample || this.generateVocabQuestion()?.mode === 'text', label: 'Vocab generator returns text mode' });
       const mayoSample = modules.mayo_madness_1.generateQuestion(this);
       results.push({ ok: !!mayoSample && mayoSample.mode === 'text' && mayoSample.acceptable instanceof Set, label: 'Mayo Madness Level 1 Vocab generates text questions' });
+      const deskItem = MAYO_MADNESS_LEVEL_1_POOL.find((x) => x.id === 'mayo1-escritorio');
+      const deskAnswers = buildAcceptableAnswerSet(deskItem.acceptable || [deskItem.sp]);
+      results.push({ ok: deskAnswers.has(normalizeLoose('pupitre')), label: 'Mayo Madness Level 1 desk accepts pupitre' });
+      const mayo2Sample = modules.mayo_madness_2.generateQuestion(this);
+      results.push({ ok: !!mayo2Sample && mayo2Sample.mode === 'text' && mayo2Sample.acceptable instanceof Set, label: 'Mayo Madness Level 2 Vocab generates text questions' });
       const priorNumbersMin = this.state.settings.numbersMin;
       const priorNumbersMax = this.state.settings.numbersMax;
       const priorNumbersSequential = this.state.settings.numbersSequential;
@@ -6000,6 +6083,16 @@ mean/nice
       this.state.hiddenItems = priorHiddenItems;
       this.state.hiddenQuestions = this.state.hiddenItems;
       results.push({ ok: typeof this.handleRevealKey === 'function' && typeof this.handleAdvanceKey === 'function', label: 'Keyboard shortcuts registered' });
+      const visibleHelpText = [
+        this.$.numbersKeysHint?.textContent || '',
+        this.$.numbersHint?.textContent || '',
+        document.querySelector('#firstRunOverlay ul')?.textContent || '',
+        document.querySelector('#numbersGuideOverlay ul')?.textContent || '',
+        document.querySelector('details.settings-accordion .accordion-inner')?.textContent || ''
+      ].join(' ');
+      results.push({ ok: /range/i.test(visibleHelpText) && /order mode|go in order/i.test(visibleHelpText) && /typed Numbers|type and spell/i.test(visibleHelpText), label: 'Visible help text covers Numbers range, typed mode, and order mode' });
+      results.push({ ok: /Mayo Madness Level 1\/2|Mayo Madness Level 2/i.test(visibleHelpText), label: 'Visible help text covers Mayo Madness Level 1/2 modules' });
+      results.push({ ok: this.$.countsRow?.closest('.top-row')?.getAttribute('aria-hidden') === 'true', label: 'Main counts/data row stays hidden while counts logic remains available' });
       const missingToggles = MODULES
         .map((m) => m.key)
         .filter((k) => !this.$['toggle_' + k]);
@@ -6014,7 +6107,7 @@ mean/nice
       });
       this.state.moduleChoices.newModulesAnswerMode = prevMode;
       results.push({ ok: sampleChecks.every(Boolean), label: 'New modules generate text mode in spelling-only setting' });
-      const textOnlyChecks = ['mayo_madness_1', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'].map((k) => {
+      const textOnlyChecks = ['mayo_madness_1', 'mayo_madness_2', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'].map((k) => {
         const q = modules[k].generateQuestion(this);
         return !!q && q.mode === 'text';
       });
