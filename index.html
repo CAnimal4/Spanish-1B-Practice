@@ -12,12 +12,12 @@ Changelog: 2026-02-13
 - Added a11y improvements (sr-only helper text, deterministic settings focus, dialog semantics preserved).
 - Added startup and on-demand smoke checks via runAutomatedChecks().
 - Added Numbers lower/upper range controls, typed endpoint inputs, typed-spelling mode, and ordered practice.
-- Added Honors Vocab plus Mayo Madness Level 1 and Level 2 vocab modules.
+- Added Honors Vocab, premium-gated Mayo Madness submodules, and Rapid Fire sentence/conjugation modules.
 
 localStorage schema (key: spanish_app_v2_state):
 {
   "version": 2,
-  "settings": { "modulesEnabled": "...", "numbersMin": 1, "numbersMax": 1000, "numbersRequireTyping": false, "numbersSequential": false, "...": "existing + new toggles/choices" },
+  "settings": { "modulesEnabled": "...", "mayoMadnessEnabled": true, "numbersMin": 1, "numbersMax": 1000, "numbersRequireTyping": false, "numbersSequential": false, "...": "existing + new toggles/choices" },
   "hiddenItems": { "question-id": true },
   "itemScores": { "question-id": 0..5 },
   "moduleChoices": { "practiceMix": 0..100, "showKeyHintStrip": true|false, "newModulesAnswerMode": "spelling"|"mixed" },
@@ -34,7 +34,7 @@ Manual test checklist:
 [ ] Two-stage reveal works (hint first, full reveal second).
 [ ] Low-scored items appear more often over repeated practice.
 [ ] Export/import round-trips hiddenItems/itemScores/settings/moduleChoices, including Numbers settings.
-[ ] Mayo Madness Level 1 and Level 2 generate text questions with slash-answer variants accepted.
+[ ] Mayo Madness parent unlocks, submodules toggle independently, and Rapid Fire variants are accepted.
 [ ] Reset progress offers undo toast for 5 seconds.
 [ ] runAutomatedChecks() reports pass/fail in Settings and console.
 
@@ -154,7 +154,8 @@ Developer note:
     .icon-btn:hover{background:var(--surface-2)}
     .icon-btn:active{transform: translateY(1px)}
     .icon-btn:focus-visible{outline:3px solid var(--focus); outline-offset:2px}
-    #settingsBtn{
+    #settingsBtn,
+    #premiumBtn{
       width:54px;
       height:54px;
       font-size:22px;
@@ -162,8 +163,19 @@ Developer note:
       background:linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
       box-shadow: 0 6px 16px rgba(37,99,235,.14);
     }
-    #settingsBtn:hover{
+    #settingsBtn:hover,
+    #premiumBtn:hover{
       background:linear-gradient(180deg, #ffffff 0%, #dbeafe 100%);
+    }
+    #premiumBtn{
+      color:#8a5a00;
+      border-color:#f4c84c;
+      background:linear-gradient(180deg, #fffdf2 0%, #fff7d6 100%);
+    }
+    #premiumBtn.unlocked{
+      color:#166534;
+      border-color:#86efac;
+      background:linear-gradient(180deg, #ffffff 0%, #dcfce7 100%);
     }
 
     /* Banner */
@@ -509,6 +521,10 @@ Developer note:
     .toggle input:checked + .switch{background:#bfdbfe; border-color:#93c5fd}
     .toggle input:checked + .switch::after{transform: translateX(18px)}
     .toggle input:focus-visible + .switch{outline:3px solid var(--focus); outline-offset:2px}
+    .summary-toggle input{display:none}
+    .summary-toggle input:checked + .switch{background:#bfdbfe; border-color:#93c5fd}
+    .summary-toggle input:checked + .switch::after{transform: translateX(18px)}
+    .summary-toggle input:focus-visible + .switch{outline:3px solid var(--focus); outline-offset:2px}
 
     .hr{height:1px;background:var(--border); margin:14px 0}
     .settings-accordion{
@@ -528,6 +544,37 @@ Developer note:
     }
     .settings-accordion[open] > summary{background:#eff6ff}
     .settings-accordion .accordion-inner{padding:10px 12px}
+    .mayo-madness-panel{
+      border-color:#fde68a;
+      background:#fffbeb;
+    }
+    .mayo-madness-panel > summary{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .summary-toggle{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size:.82rem;
+      color:var(--muted);
+      cursor:pointer;
+    }
+    .mayo-submodules{
+      margin-top:10px;
+      padding-left:10px;
+      border-left:3px solid #fde68a;
+    }
+    .locked-note{
+      padding:12px;
+      border-radius:10px;
+      border:1px dashed #f4c84c;
+      background:#fff7d6;
+      color:#5f3b00;
+      font-weight:800;
+    }
 
     /* Hidden list */
     .hidden-list{
@@ -624,7 +671,8 @@ Developer note:
       input[type="text"]{min-width: 100%}
       body{padding:12px 12px 22px}
       .topbar{padding:14px}
-      #settingsBtn{
+      #settingsBtn,
+      #premiumBtn{
         width:50px;
         height:50px;
         font-size:20px;
@@ -649,6 +697,7 @@ Developer note:
           <span id="activeModuleLabel">Numbers</span>
           <span class="meta" id="activeModuleMeta"></span>
         </span>
+        <button class="icon-btn" id="premiumBtn" aria-label="Premium Access" title="Premium Access">★</button>
         <button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
       </div>
     </header>
@@ -672,8 +721,13 @@ Developer note:
           <button class="btn small" data-solo="numbers" id="soloNumbersBtn" aria-label="Practice only Numbers">Practice only Numbers</button>
           <button class="btn small" data-solo="commands" id="soloCommandsBtn" aria-label="Practice only Command tone">Practice only Command tone</button>
           <button class="btn small" data-solo="vocab" id="soloVocabBtn" aria-label="Practice only Honors Vocab">Practice only Honors Vocab</button>
+          <button class="btn small" data-solo="mayo_madness" id="soloMayoMadnessBtn" aria-label="Practice only Mayo Madness">Practice only Mayo Madness</button>
           <button class="btn small" data-solo="mayo_madness_1" id="soloMayoMadness1Btn" aria-label="Practice only Mayo Madness Level 1 Vocab">Practice only Mayo Madness Level 1 Vocab</button>
           <button class="btn small" data-solo="mayo_madness_2" id="soloMayoMadness2Btn" aria-label="Practice only Mayo Madness Level 2 Vocab">Practice only Mayo Madness Level 2 Vocab</button>
+          <button class="btn small" data-solo="rapid_translations_2" id="soloRapidTranslations2Btn" aria-label="Practice only Mayo Madness Level 2 Rapid Fire Translations">Practice only Mayo Madness Level 2 Rapid Fire Translations</button>
+          <button class="btn small" data-solo="rapid_regular_verbs" id="soloRapidRegularVerbsBtn" aria-label="Practice only Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations">Practice only Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations</button>
+          <button class="btn small" data-solo="rapid_irregular_verbs" id="soloRapidIrregularVerbsBtn" aria-label="Practice only Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations">Practice only Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations</button>
+          <button class="btn small" data-solo="mayo_madness_3_rapid_translations" id="soloMayoMadness3RapidTranslationsBtn" aria-label="Practice only Mayo Madness Level 3 Rapid Fire Translations">Practice only Mayo Madness Level 3: Rapid Fire Translations</button>
           <button class="btn small" data-solo="reflexive" id="soloReflexiveBtn" aria-label="Practice only Reflexive">Practice only Reflexive</button>
           <button class="btn small" data-solo="tenses" id="soloTensesBtn" aria-label="Practice only Tenses">Practice only Tenses</button>
           <button class="btn small" data-solo="days" id="soloDaysBtn" aria-label="Practice only Days">Practice only Days</button>
@@ -698,8 +752,13 @@ Developer note:
             <option value="numbers">Numbers</option>
             <option value="commands">Command tone</option>
             <option value="vocab">Honors Vocab</option>
+            <option value="mayo_madness">Mayo Madness</option>
             <option value="mayo_madness_1">Mayo Madness Level 1 Vocab</option>
             <option value="mayo_madness_2">Mayo Madness Level 2 Vocab</option>
+            <option value="rapid_translations_2">Mayo Madness Level 2 Rapid Fire Translations</option>
+            <option value="rapid_regular_verbs">Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations</option>
+            <option value="rapid_irregular_verbs">Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations</option>
+            <option value="mayo_madness_3_rapid_translations">Mayo Madness Level 3: Rapid Fire Translations</option>
             <option value="reflexive">Reflexive</option>
             <option value="tenses">Tenses</option>
             <option value="days">Days</option>
@@ -831,14 +890,41 @@ Developer note:
             <div><div class="label">Honors Vocab</div><div class="desc">English → Spanish typing (accents optional).</div></div>
             <label><input type="checkbox" id="toggle_vocab" aria-label="Toggle vocab module" /><span class="switch" aria-hidden="true"></span></label>
           </div>
-          <div class="toggle">
-            <div><div class="label">Mayo Madness Level 1 Vocab</div><div class="desc">Classroom objects and people vocabulary.</div></div>
-            <label><input type="checkbox" id="toggle_mayo_madness_1" aria-label="Toggle Mayo Madness Level 1 Vocab module" /><span class="switch" aria-hidden="true"></span></label>
-          </div>
-          <div class="toggle">
-            <div><div class="label">Mayo Madness Level 2 Vocab</div><div class="desc">More classroom vocabulary with slash-answer variants.</div></div>
-            <label><input type="checkbox" id="toggle_mayo_madness_2" aria-label="Toggle Mayo Madness Level 2 Vocab module" /><span class="switch" aria-hidden="true"></span></label>
-          </div>
+          <details class="settings-accordion mayo-madness-panel" id="mayoMadnessDetails" open>
+            <summary>
+              <span>Mayo Madness</span>
+              <label class="summary-toggle" id="mayoMadnessParentToggleLabel"><span>Enabled</span><input type="checkbox" id="toggle_mayo_madness" aria-label="Toggle Mayo Madness parent module" /><span class="switch" aria-hidden="true"></span></label>
+            </summary>
+            <div class="accordion-inner">
+              <div class="locked-note" id="mayoLockedNote">Premium locked. Click ★ Premium Access to unlock Mayo Madness for this session.</div>
+              <div class="mayo-submodules" id="mayoSubmoduleList">
+                <div class="toggle">
+                  <div><div class="label">Mayo Madness Level 1 Vocab</div><div class="desc">Classroom objects and people vocabulary.</div></div>
+                  <label><input type="checkbox" id="toggle_mayo_madness_1" aria-label="Toggle Mayo Madness Level 1 Vocab module" /><span class="switch" aria-hidden="true"></span></label>
+                </div>
+                <div class="toggle">
+                  <div><div class="label">Mayo Madness Level 2 Vocab</div><div class="desc">More classroom vocabulary with slash-answer variants.</div></div>
+                  <label><input type="checkbox" id="toggle_mayo_madness_2" aria-label="Toggle Mayo Madness Level 2 Vocab module" /><span class="switch" aria-hidden="true"></span></label>
+                </div>
+                <div class="toggle">
+                  <div><div class="label">Mayo Madness Level 2 Rapid Fire Translations</div><div class="desc">Full-sentence English to Spanish rapid-fire translations.</div></div>
+                  <label><input type="checkbox" id="toggle_rapid_translations_2" aria-label="Toggle Mayo Madness Level 2 Rapid Fire Translations module" /><span class="switch" aria-hidden="true"></span></label>
+                </div>
+                <div class="toggle">
+                  <div><div class="label">Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations</div><div class="desc">Quick present-tense nosotros regular verbs.</div></div>
+                  <label><input type="checkbox" id="toggle_rapid_regular_verbs" aria-label="Toggle Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations module" /><span class="switch" aria-hidden="true"></span></label>
+                </div>
+                <div class="toggle">
+                  <div><div class="label">Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations</div><div class="desc">Quick present-tense irregular forms and common variants.</div></div>
+                  <label><input type="checkbox" id="toggle_rapid_irregular_verbs" aria-label="Toggle Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations module" /><span class="switch" aria-hidden="true"></span></label>
+                </div>
+                <div class="toggle">
+                  <div><div class="label">Mayo Madness Level 3: Rapid Fire Translations</div><div class="desc">Sentence and past-tense rapid-fire translations with common variants.</div></div>
+                  <label><input type="checkbox" id="toggle_mayo_madness_3_rapid_translations" aria-label="Toggle Mayo Madness Level 3 Rapid Fire Translations module" /><span class="switch" aria-hidden="true"></span></label>
+                </div>
+              </div>
+            </div>
+          </details>
           <div class="toggle">
             <div><div class="label">Reflexive verbs</div><div class="desc">Present tense only (accepts <em>se llama</em> or <em>llama</em>).</div></div>
             <label><input type="checkbox" id="toggle_reflexive" aria-label="Toggle reflexive module" /><span class="switch" aria-hidden="true"></span></label>
@@ -950,7 +1036,7 @@ Developer note:
             <label class="btn small ghost"><input type="radio" name="newModulesAnswerMode" value="spelling" id="newModulesMode_spelling" aria-label="Spelling only mode for new modules" />&nbsp;Spelling only (default)</label>
             <label class="btn small ghost"><input type="radio" name="newModulesAnswerMode" value="mixed" id="newModulesMode_mixed" aria-label="Mixed mode for new modules" />&nbsp;Mixed (spelling + multiple choice)</label>
           </div>
-          <p class="small muted">Applies only to Days, Months, Seasons, Time, and Colors. Honors Vocab, Mayo Madness, and newer text modules stay spelling-based.</p>
+          <p class="small muted">Applies only to Days, Months, Seasons, Time, and Colors. Honors Vocab, Mayo Madness, Rapid Fire, and newer text modules stay spelling-based.</p>
         </div>
       </details>
 
@@ -999,6 +1085,26 @@ Developer note:
           <div class="feedback neutral" id="checksOutput" aria-live="polite">Automated checks not run yet.</div>
         </div>
       </details>
+    </div>
+  </div>
+
+  <!-- PREMIUM ACCESS MODAL -->
+  <div class="modal-overlay" id="premiumOverlay" role="dialog" aria-modal="true" aria-labelledby="premiumTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div style="font-weight:900; font-size:1.05rem" id="premiumTitle">Premium Access</div>
+          <div class="muted small">Unlock Mayo Madness for this session.</div>
+        </div>
+        <button class="icon-btn" id="premiumCloseBtn" aria-label="Close premium access">✕</button>
+      </div>
+      <div class="input-row">
+        <input id="premiumPasswordInput" type="password" autocomplete="off" placeholder="Enter premium password…" aria-label="Premium password" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="premiumSubmitBtn" aria-label="Unlock premium access">Unlock</button>
+      </div>
+      <div class="feedback neutral" id="premiumFeedback" aria-live="polite">Password is required to use Mayo Madness.</div>
     </div>
   </div>
 
@@ -1077,7 +1183,7 @@ Developer note:
 
       <ul>
         <li><strong>⚙ Settings</strong>: enable modules, choose the Numbers range, turn on typed Numbers, or make Numbers go in order.</li>
-        <li><strong>Practice only</strong>: jump straight to Numbers, Honors Vocab, Mayo Madness Level 1/2, or any enabled module.</li>
+        <li><strong>Practice only</strong>: jump straight to Numbers, Honors Vocab, Mayo Madness, or any enabled module.</li>
         <li><strong>Enter</strong>: submit answers in typing modules and typed Numbers mode.</li>
         <li><strong>Accent toolbar</strong>: inserts á é í ó ú ñ ü at your cursor.</li>
         <li><strong>🙈 Never show again</strong>: hides the current question (manage/restore in Settings).</li>
@@ -1150,6 +1256,10 @@ Developer note:
     { key: 'vocab',     name: 'Honors Vocab' },
     { key: 'mayo_madness_1', name: 'Mayo Madness Level 1 Vocab' },
     { key: 'mayo_madness_2', name: 'Mayo Madness Level 2 Vocab' },
+    { key: 'rapid_translations_2', name: 'Mayo Madness Level 2 Rapid Fire Translations' },
+    { key: 'rapid_regular_verbs', name: 'Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations' },
+    { key: 'rapid_irregular_verbs', name: 'Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations' },
+    { key: 'mayo_madness_3_rapid_translations', name: 'Mayo Madness Level 3: Rapid Fire Translations' },
     { key: 'reflexive', name: 'Reflexive verbs' },
     { key: 'tenses',    name: 'Tenses' },
     { key: 'days',      name: 'Days' },
@@ -1166,6 +1276,21 @@ Developer note:
     { key: 'gustar',    name: 'Gustar' },
     { key: 'dates',     name: 'Dates' }
   ];
+
+  const MAYO_MADNESS_KEY = 'mayo_madness';
+  const MAYO_MADNESS_PASSWORD = 'ibelikesheesh';
+  const MAYO_MADNESS_SUBMODULE_KEYS = [
+    'mayo_madness_1',
+    'mayo_madness_2',
+    'rapid_translations_2',
+    'rapid_regular_verbs',
+    'rapid_irregular_verbs',
+    'mayo_madness_3_rapid_translations'
+  ];
+
+  function isMayoMadnessKey(key) {
+    return MAYO_MADNESS_SUBMODULE_KEYS.includes(key);
+  }
 
   const PERSONS = [
     { code: '1s', label: 'yo', display: 'yo (I)' },
@@ -2290,10 +2415,10 @@ mean/nice
     { id: 'colors-negro', sp: 'negro', en: 'black' },
     { id: 'colors-blanco', sp: 'blanco', en: 'white' },
     { id: 'colors-gris', sp: 'gris', en: 'gray' },
-    { id: 'colors-morado', sp: 'morado', en: 'purple' },
-    { id: 'colors-rosado', sp: 'rosado', en: 'pink' },
-    { id: 'colors-anaranjado', sp: 'anaranjado', en: 'orange' },
-    { id: 'colors-cafe', sp: 'café', en: 'brown' },
+    { id: 'colors-morado', sp: 'morado', en: 'purple', acceptable: ['morado', 'violeta'] },
+    { id: 'colors-rosado', sp: 'rosado', en: 'pink', acceptable: ['rosado', 'rosa'] },
+    { id: 'colors-anaranjado', sp: 'anaranjado', en: 'orange', acceptable: ['anaranjado', 'naranja'] },
+    { id: 'colors-cafe', sp: 'café', en: 'brown', acceptable: ['café', 'marrón'] },
     { id: 'colors-plateado', sp: 'plateado', en: 'silver' },
     { id: 'colors-dorado', sp: 'dorado', en: 'gold' },
     { id: 'colors-beige', sp: 'beige', en: 'beige' },
@@ -2321,6 +2446,185 @@ mean/nice
     { id: 'mayo2-bandera', sp: 'la bandera', en: 'flag' },
     { id: 'mayo2-pizarra', sp: 'la pizarra / la pizarra blanca', en: 'whiteboard', acceptable: ['la pizarra', 'la pizarra blanca'] },
     { id: 'mayo2-mochila', sp: 'la mochila', en: 'backpack' }
+  ];
+
+  const RAPID_TRANSLATIONS_LEVEL_2_POOL = [
+    {
+      id: 'rapid2-sisters',
+      en: 'I have 5 tall sisters with blue eyes',
+      sp: 'Tengo cinco hermanas altas con ojos azules',
+      acceptable: [
+        'Tengo cinco hermanas altas con ojos azules',
+        'Yo tengo cinco hermanas altas con ojos azules',
+        'Tengo 5 hermanas altas con ojos azules',
+        'Yo tengo 5 hermanas altas con ojos azules'
+      ]
+    },
+    {
+      id: 'rapid2-live-beach',
+      en: 'We live at the beach',
+      sp: 'Vivimos en la playa',
+      acceptable: ['Vivimos en la playa', 'Nosotros vivimos en la playa', 'Nosotras vivimos en la playa']
+    },
+    {
+      id: 'rapid2-friends-beach',
+      en: 'My friends go to the beach every day',
+      sp: 'Mis amigos van a la playa todos los días',
+      acceptable: [
+        'Mis amigos van a la playa todos los días',
+        'Mis amigas van a la playa todos los días',
+        'Mis amigos van a la playa cada día',
+        'Mis amigas van a la playa cada día'
+      ]
+    },
+    {
+      id: 'rapid2-eat-food',
+      en: 'You need to eat more food',
+      sp: 'Necesitas comer más comida',
+      acceptable: [
+        'Necesitas comer más comida',
+        'Tú necesitas comer más comida',
+        'Usted necesita comer más comida',
+        'Necesita comer más comida'
+      ]
+    },
+    {
+      id: 'rapid2-store',
+      en: 'I am going to go to the store',
+      sp: 'Voy a ir a la tienda',
+      acceptable: ['Voy a ir a la tienda', 'Yo voy a ir a la tienda']
+    }
+  ];
+
+  const RAPID_REGULAR_VERB_POOL = [
+    { id: 'rapid-reg-work', en: 'We work', sp: 'Trabajamos', acceptable: ['Trabajamos', 'Nosotros trabajamos', 'Nosotras trabajamos'] },
+    { id: 'rapid-reg-play', en: 'We play', sp: 'Jugamos', acceptable: ['Jugamos', 'Nosotros jugamos', 'Nosotras jugamos'] },
+    { id: 'rapid-reg-talk', en: 'We talk', sp: 'Hablamos', acceptable: ['Hablamos', 'Nosotros hablamos', 'Nosotras hablamos'] },
+    { id: 'rapid-reg-watch', en: 'We watch', sp: 'Miramos / Vemos', acceptable: ['Miramos', 'Vemos', 'Nosotros miramos', 'Nosotras miramos', 'Nosotros vemos', 'Nosotras vemos'] },
+    { id: 'rapid-reg-see', en: 'We see', sp: 'Vemos', acceptable: ['Vemos', 'Nosotros vemos', 'Nosotras vemos'] },
+    { id: 'rapid-reg-run', en: 'We run', sp: 'Corremos', acceptable: ['Corremos', 'Nosotros corremos', 'Nosotras corremos'] },
+    { id: 'rapid-reg-clean', en: 'We clean', sp: 'Limpiamos', acceptable: ['Limpiamos', 'Nosotros limpiamos', 'Nosotras limpiamos'] },
+    { id: 'rapid-reg-dance', en: 'We dance', sp: 'Bailamos', acceptable: ['Bailamos', 'Nosotros bailamos', 'Nosotras bailamos'] }
+  ];
+
+  const RAPID_IRREGULAR_VERB_POOL = [
+    { id: 'rapid-irreg-have', en: 'We have', sp: 'Tenemos', acceptable: ['Tenemos', 'Nosotros tenemos', 'Nosotras tenemos'] },
+    { id: 'rapid-irreg-can', en: 'We can', sp: 'Podemos', acceptable: ['Podemos', 'Nosotros podemos', 'Nosotras podemos'] },
+    { id: 'rapid-irreg-know', en: 'I know', sp: 'Sé / Conozco', acceptable: ['Sé', 'Se', 'Yo sé', 'Yo se', 'Conozco', 'Yo conozco'], note: 'Sé is for facts; conozco is for people or places.' },
+    { id: 'rapid-irreg-say', en: 'I say/tell', sp: 'Digo', acceptable: ['Digo', 'Yo digo'] },
+    { id: 'rapid-irreg-leave', en: 'I leave/go out', sp: 'Salgo', acceptable: ['Salgo', 'Yo salgo'] },
+    { id: 'rapid-irreg-do', en: 'I do/make', sp: 'Hago', acceptable: ['Hago', 'Yo hago'] },
+    { id: 'rapid-irreg-go', en: 'They go', sp: 'Van', acceptable: ['Van', 'Ellos van', 'Ellas van', 'Ustedes van'] },
+    { id: 'rapid-irreg-ser', en: 'We are (ser)', sp: 'Somos', acceptable: ['Somos', 'Nosotros somos', 'Nosotras somos'] },
+    { id: 'rapid-irreg-estar', en: 'We are (estar)', sp: 'Estamos', acceptable: ['Estamos', 'Nosotros estamos', 'Nosotras estamos'] }
+  ];
+
+  const MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL = [
+    {
+      id: 'mayo3-hurry-hungry',
+      en: 'We are in a hurry and we are hungry',
+      sp: 'Estamos apurados y tenemos hambre',
+      acceptable: [
+        'Estamos apurados y tenemos hambre',
+        'Estamos apuradas y tenemos hambre',
+        'Nosotros estamos apurados y tenemos hambre',
+        'Nosotras estamos apuradas y tenemos hambre',
+        'Estamos con prisa y tenemos hambre',
+        'Nosotros estamos con prisa y tenemos hambre',
+        'Nosotras estamos con prisa y tenemos hambre'
+      ]
+    },
+    {
+      id: 'mayo3-close-beach',
+      en: 'I am close to the beach',
+      sp: 'Estoy cerca de la playa',
+      acceptable: ['Estoy cerca de la playa', 'Yo estoy cerca de la playa']
+    },
+    {
+      id: 'mayo3-live-far-school',
+      en: 'They live far from the school',
+      sp: 'Ellos viven lejos de la escuela',
+      acceptable: [
+        'Ellos viven lejos de la escuela',
+        'Ellas viven lejos de la escuela',
+        'Viven lejos de la escuela',
+        'Ellos viven lejos del colegio',
+        'Ellas viven lejos del colegio',
+        'Viven lejos del colegio'
+      ]
+    },
+    {
+      id: 'mayo3-play-game',
+      en: 'She has to play in a game today',
+      sp: 'Ella tiene que jugar en un partido hoy',
+      acceptable: [
+        'Ella tiene que jugar en un partido hoy',
+        'Tiene que jugar en un partido hoy',
+        'Ella debe jugar en un juego hoy',
+        'Debe jugar en un juego hoy',
+        'Ella tiene que jugar en un juego hoy',
+        'Tiene que jugar en un juego hoy'
+      ]
+    },
+    {
+      id: 'mayo3-we-had',
+      en: 'We had',
+      sp: 'Tuvimos / Teníamos',
+      acceptable: ['Tuvimos', 'Teníamos', 'Nosotros tuvimos', 'Nosotras tuvimos', 'Nosotros teníamos', 'Nosotras teníamos'],
+      note: 'Tuvimos is completed action; teníamos is ongoing or habitual past.'
+    },
+    {
+      id: 'mayo3-we-could',
+      en: 'We could',
+      sp: 'Pudimos / Podíamos',
+      acceptable: ['Pudimos', 'Podíamos', 'Nosotros pudimos', 'Nosotras pudimos', 'Nosotros podíamos', 'Nosotras podíamos'],
+      note: 'Pudimos means managed to; podíamos means could in general or used to be able to.'
+    },
+    {
+      id: 'mayo3-i-knew',
+      en: 'I knew',
+      sp: 'Supe / Sabía',
+      acceptable: ['Supe', 'Sabía', 'Yo supe', 'Yo sabía'],
+      note: 'Supe means found out; sabía means already knew.'
+    },
+    {
+      id: 'mayo3-i-said',
+      en: 'I said / told',
+      sp: 'Dije',
+      acceptable: ['Dije', 'Yo dije']
+    },
+    {
+      id: 'mayo3-i-was-place',
+      en: 'I was (in a place)',
+      sp: 'Estuve / Estaba',
+      acceptable: ['Estuve', 'Estaba', 'Yo estuve', 'Yo estaba'],
+      note: 'Estuve is temporary/completed; estaba is ongoing.'
+    },
+    {
+      id: 'mayo3-i-did-made',
+      en: 'I did / made',
+      sp: 'Hice',
+      acceptable: ['Hice', 'Yo hice']
+    },
+    {
+      id: 'mayo3-bed-late',
+      en: 'They go to bed very late',
+      sp: 'Ellos se acuestan muy tarde',
+      acceptable: ['Ellos se acuestan muy tarde', 'Ellas se acuestan muy tarde', 'Se acuestan muy tarde']
+    },
+    {
+      id: 'mayo3-they-went',
+      en: 'They went',
+      sp: 'Fueron',
+      acceptable: ['Fueron', 'Ellos fueron', 'Ellas fueron']
+    },
+    {
+      id: 'mayo3-we-were-estar',
+      en: 'We were (estar)',
+      sp: 'Estuvimos / Estábamos',
+      acceptable: ['Estuvimos', 'Estábamos', 'Nosotros estuvimos', 'Nosotras estuvimos', 'Nosotros estábamos', 'Nosotras estábamos'],
+      note: 'Estuvimos is completed; estábamos is ongoing.'
+    }
   ];
 
   const COLOR_CONFUSABLES = {
@@ -2365,7 +2669,7 @@ mean/nice
     { id: 'time-1100', display: 'Son las once', hour24: 11, minute: 0 },
     { id: 'time-1135', display: 'Son las once y treinta y cinco', hour24: 11, minute: 35 },
     { id: 'time-1200', display: 'Mediodía', hour24: 12, minute: 0 },
-    { id: 'time-1215', display: 'Es la una y cuarto', hour24: 12, minute: 15 },
+    { id: 'time-1215', display: 'Son las doce y cuarto', hour24: 12, minute: 15 },
     { id: 'time-1300', display: 'Es la una', hour24: 13, minute: 0 },
     { id: 'time-1330', display: 'Es la una y media', hour24: 13, minute: 30 },
     { id: 'time-1345', display: 'Son las dos menos cuarto', hour24: 13, minute: 45 },
@@ -2385,10 +2689,10 @@ mean/nice
     { id: 'weather-cold', en: "it's cold", sp: 'hace frío' },
     { id: 'weather-hot', en: "it's hot", sp: 'hace calor' },
     { id: 'weather-cool', en: "it's cool", sp: 'hace fresco' },
-    { id: 'weather-sunny', en: "it's sunny", sp: 'hace sol' },
+    { id: 'weather-sunny', en: "it's sunny", sp: 'hace sol', acceptable: ['hace sol', 'está soleado'] },
     { id: 'weather-cloudy', en: "it's cloudy", sp: 'está nublado' },
-    { id: 'weather-rainy', en: "it's rainy", sp: 'está lluvioso' },
-    { id: 'weather-raining', en: "it's raining", sp: 'está lloviendo' },
+    { id: 'weather-rainy', en: "it's rainy", sp: 'está lluvioso', acceptable: ['está lluvioso', 'está lloviendo', 'llueve'] },
+    { id: 'weather-raining', en: "it's raining", sp: 'está lloviendo', acceptable: ['está lloviendo', 'llueve'] },
     { id: 'weather-windy', en: "it's windy", sp: 'hace viento' },
     { id: 'weather-snowing', en: "it's snowing", sp: 'está nevando' },
     { id: 'weather-foggy', en: "it's foggy", sp: 'hay niebla' },
@@ -2421,7 +2725,7 @@ mean/nice
     { id: 'clothing-hat', en: 'hat', sp: 'el sombrero' },
     { id: 'clothing-coat', en: 'coat', sp: 'el abrigo' },
     { id: 'clothing-sweater', en: 'sweater', sp: 'el suéter' },
-    { id: 'clothing-shorts', en: 'shorts', sp: 'los shorts' },
+    { id: 'clothing-shorts', en: 'shorts', sp: 'los shorts', acceptable: ['los shorts', 'los pantalones cortos'] },
     { id: 'clothing-boots', en: 'boots', sp: 'las botas' },
     { id: 'clothing-belt', en: 'belt', sp: 'el cinturón' },
     { id: 'clothing-gloves', en: 'gloves', sp: 'los guantes' },
@@ -2430,10 +2734,10 @@ mean/nice
     { id: 'clothing-hoodie', en: 'hoodie', sp: 'la sudadera' },
     { id: 'clothing-jeans', en: 'jeans', sp: 'los jeans' },
     { id: 'clothing-sandals', en: 'sandals', sp: 'las sandalias' },
-    { id: 'clothing-sneakers', en: 'sneakers', sp: 'los tenis' },
+    { id: 'clothing-sneakers', en: 'sneakers', sp: 'los tenis', acceptable: ['los tenis', 'las zapatillas', 'los zapatos deportivos'] },
     { id: 'clothing-shirt-f', en: 'blouse', sp: 'la blusa' },
     { id: 'clothing-underwear', en: 'underwear', sp: 'la ropa interior' },
-    { id: 'clothing-pajamas', en: 'pajamas', sp: 'la pijama' },
+    { id: 'clothing-pajamas', en: 'pajamas', sp: 'la pijama', acceptable: ['la pijama', 'el pijama'] },
     { id: 'clothing-bathingsuit', en: 'swimsuit', sp: 'el traje de baño' },
     { id: 'clothing-shirt-long', en: 'long-sleeve shirt', sp: 'la camisa de manga larga' }
   ];
@@ -2452,7 +2756,7 @@ mean/nice
     { id: 'foods-water', en: 'water', sp: 'el agua' },
     { id: 'foods-beans', en: 'beans', sp: 'los frijoles' },
     { id: 'foods-beef', en: 'beef', sp: 'la carne de res' },
-    { id: 'foods-pork', en: 'pork', sp: 'el cerdo' },
+    { id: 'foods-pork', en: 'pork', sp: 'la carne de cerdo', acceptable: ['la carne de cerdo', 'el cerdo'] },
     { id: 'foods-turkey', en: 'turkey', sp: 'el pavo' },
     { id: 'foods-soup', en: 'soup', sp: 'la sopa' },
     { id: 'foods-salad', en: 'salad', sp: 'la ensalada' },
@@ -2556,7 +2860,7 @@ mean/nice
     { id: 'gustar-13', prompt: 'They like weekends.', expected: 'les gustan los fines de semana' },
     { id: 'gustar-14', prompt: 'We like our class.', expected: 'nos gusta nuestra clase' },
     { id: 'gustar-15', prompt: 'I like your shoes.', expected: 'me gustan tus zapatos' },
-    { id: 'gustar-16', prompt: 'You formal like music.', expected: 'le gusta la música' },
+    { id: 'gustar-16', prompt: 'You (formal) like music.', expected: 'le gusta la música' },
     { id: 'gustar-17', prompt: 'My friends like history.', expected: 'les gusta la historia' },
     { id: 'gustar-18', prompt: 'I like books.', expected: 'me gustan los libros' },
     { id: 'gustar-19', prompt: 'We like to write.', expected: 'nos gusta escribir' },
@@ -2811,6 +3115,24 @@ mean/nice
     return out;
   }
 
+  function generateRapidFireQuestion(app, moduleKey, pool) {
+    const hidden = app.state.hiddenItems;
+    const recent = new Set((app.recentByModule[moduleKey] || []).slice(-3));
+    const available = pool.filter(x => !hidden[x.id] && !recent.has(x.id));
+    const fallback = pool.filter(x => !hidden[x.id]);
+    const item = pickByWeakScore(available.length ? available : fallback, app.state.itemScores, recent);
+    if (!item) return null;
+    return {
+      module: moduleKey,
+      id: item.id,
+      mode: 'text',
+      prompt: `Translate to Spanish: <strong>${escapeHtml(item.en)}</strong>`,
+      expectedDisplay: item.sp,
+      acceptable: buildAcceptableAnswerSet(item.acceptable || [item.sp]),
+      explanation: item.note || 'Common subject-pronoun and classroom-context variants are accepted.'
+    };
+  }
+
   function apocopateUno(nStr) {
     return String(nStr || '')
       .replace(/\bveintiuno\b/g, 'veintiún')
@@ -2856,6 +3178,10 @@ mean/nice
     if (mod10 === 2 && mod100 !== 12) return `${n}nd`;
     if (mod10 === 3 && mod100 !== 13) return `${n}rd`;
     return `${n}th`;
+  }
+
+  function dateDayToSpanish(day) {
+    return day === 1 ? 'primero' : numberToSpanish(day);
   }
 
   function fnv1a32(str) {
@@ -3276,7 +3602,10 @@ mean/nice
       const canon = normalizeTimeToCanonical(t.display);
       if (canon) set.add(canon);
     }
-    for (const d of DATES_POOL) add(`el ${numberToSpanish(d.day)} de ${d.monthSp}`);
+    for (const d of DATES_POOL) {
+      add(`el ${dateDayToSpanish(d.day)} de ${d.monthSp}`);
+      if (d.day === 1) add(`el uno de ${d.monthSp}`);
+    }
 
     // Common time/date tokens covered by dedicated modules.
     ['media', 'cuarto', 'mediodia', 'medianoche', 'el dia', 'el mes', 'la semana', 'la hora', 'la fecha'].forEach(add);
@@ -3312,6 +3641,10 @@ mean/nice
           vocab: false,
           mayo_madness_1: false,
           mayo_madness_2: false,
+          rapid_translations_2: false,
+          rapid_regular_verbs: false,
+          rapid_irregular_verbs: false,
+          mayo_madness_3_rapid_translations: false,
           reflexive: false,
           tenses: false,
           days: true,
@@ -3328,6 +3661,7 @@ mean/nice
           gustar: false,
           dates: false
         },
+        mayoMadnessEnabled: true,
         tensesEnabled: { present: true, preterite: false, imperfect: false },
         tensesIrregularOnly: false,
         numbersMin: 1,
@@ -3371,6 +3705,9 @@ mean/nice
           if (!('ser_estar' in s.modulesEnabled)) out.settings.modulesEnabled.ser_estar = true;
           if (!('gustar' in s.modulesEnabled)) out.settings.modulesEnabled.gustar = true;
         }
+      }
+      if (typeof s.mayoMadnessEnabled === 'boolean') {
+        out.settings.mayoMadnessEnabled = s.mayoMadnessEnabled;
       }
       if (isPlainObject(s.tensesEnabled)) {
         for (const t of Object.keys(base.settings.tensesEnabled)) {
@@ -3546,7 +3883,7 @@ mean/nice
             mode: 'text',
             prompt: `Translate to Spanish: <strong>${escapeHtml(item.en)}</strong>`,
             expectedDisplay: item.sp,
-            acceptable: buildAcceptableAnswerSet([item.sp])
+            acceptable: buildAcceptableAnswerSet(item.acceptable || [item.sp])
           };
         }
         const correct = item.sp;
@@ -3727,6 +4064,34 @@ mean/nice
       }
     },
 
+    // === MODULE: MAYO MADNESS LEVEL 2 RAPID FIRE TRANSLATIONS ===
+    rapid_translations_2: {
+      generateQuestion(app) {
+        return generateRapidFireQuestion(app, 'rapid_translations_2', RAPID_TRANSLATIONS_LEVEL_2_POOL);
+      }
+    },
+
+    // === MODULE: RAPID FIRE REGULAR VERB CONJUGATIONS ===
+    rapid_regular_verbs: {
+      generateQuestion(app) {
+        return generateRapidFireQuestion(app, 'rapid_regular_verbs', RAPID_REGULAR_VERB_POOL);
+      }
+    },
+
+    // === MODULE: RAPID FIRE IRREGULAR VERB CONJUGATIONS ===
+    rapid_irregular_verbs: {
+      generateQuestion(app) {
+        return generateRapidFireQuestion(app, 'rapid_irregular_verbs', RAPID_IRREGULAR_VERB_POOL);
+      }
+    },
+
+    // === MODULE: MAYO MADNESS LEVEL 3 RAPID FIRE TRANSLATIONS ===
+    mayo_madness_3_rapid_translations: {
+      generateQuestion(app) {
+        return generateRapidFireQuestion(app, 'mayo_madness_3_rapid_translations', MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL);
+      }
+    },
+
     // === MODULE: PRICES ===
     prices: {
       generateQuestion(app) {
@@ -3764,7 +4129,7 @@ mean/nice
           mode: 'text',
           prompt: `Translate to Spanish: <strong>${escapeHtml(item.en)}</strong>`,
           expectedDisplay: item.sp,
-          acceptable: buildAcceptableAnswerSet([item.sp])
+          acceptable: buildAcceptableAnswerSet(item.acceptable || [item.sp])
         };
       }
     },
@@ -3784,7 +4149,7 @@ mean/nice
           mode: 'text',
           prompt: `Translate to Spanish: <strong>${escapeHtml(item.en)}</strong>`,
           expectedDisplay: item.sp,
-          acceptable: buildAcceptableAnswerSet([item.sp])
+          acceptable: buildAcceptableAnswerSet(item.acceptable || [item.sp])
         };
       }
     },
@@ -3804,7 +4169,7 @@ mean/nice
           mode: 'text',
           prompt: `Translate to Spanish: <strong>${escapeHtml(item.en)}</strong>`,
           expectedDisplay: item.sp,
-          acceptable: buildAcceptableAnswerSet([item.sp])
+          acceptable: buildAcceptableAnswerSet(item.acceptable || [item.sp])
         };
       }
     },
@@ -3886,14 +4251,15 @@ mean/nice
         const item = pickByWeakScore(pool.length ? pool : fallback, app.state.itemScores, recent);
         if (!item) return null;
         const promptDate = `${item.monthEn} ${englishOrdinal(item.day)}`;
-        const expected = `el ${numberToSpanish(item.day)} de ${item.monthSp}`;
+        const expected = `el ${dateDayToSpanish(item.day)} de ${item.monthSp}`;
+        const acceptedDates = item.day === 1 ? [expected, `el uno de ${item.monthSp}`] : [expected];
         return {
           module: 'dates',
           id: item.id,
           mode: 'text',
           prompt: `Write this date in full Spanish (not shorthand): <strong>${escapeHtml(promptDate)}</strong>`,
           expectedDisplay: expected,
-          acceptable: buildAcceptableAnswerSet([expected]),
+          acceptable: buildAcceptableAnswerSet(acceptedDates),
           explanation: 'Use full written Spanish date format.'
         };
       }
@@ -3917,6 +4283,7 @@ mean/nice
 
     currentQuestion: null,
     answered: false,
+    mayoPremiumUnlocked: false,
 
     // Numbers module (original behavior)
     currentNumber: null,
@@ -3931,6 +4298,10 @@ mean/nice
       vocab: [],
       mayo_madness_1: [],
       mayo_madness_2: [],
+      rapid_translations_2: [],
+      rapid_regular_verbs: [],
+      rapid_irregular_verbs: [],
+      mayo_madness_3_rapid_translations: [],
       reflexive: [],
       tenses: [],
       days: [],
@@ -4039,8 +4410,13 @@ mean/nice
         soloNumbersBtn: $('soloNumbersBtn'),
         soloCommandsBtn: $('soloCommandsBtn'),
         soloVocabBtn: $('soloVocabBtn'),
+        soloMayoMadnessBtn: $('soloMayoMadnessBtn'),
         soloMayoMadness1Btn: $('soloMayoMadness1Btn'),
         soloMayoMadness2Btn: $('soloMayoMadness2Btn'),
+        soloRapidTranslations2Btn: $('soloRapidTranslations2Btn'),
+        soloRapidRegularVerbsBtn: $('soloRapidRegularVerbsBtn'),
+        soloRapidIrregularVerbsBtn: $('soloRapidIrregularVerbsBtn'),
+        soloMayoMadness3RapidTranslationsBtn: $('soloMayoMadness3RapidTranslationsBtn'),
         soloReflexiveBtn: $('soloReflexiveBtn'),
         soloTensesBtn: $('soloTensesBtn'),
         soloDaysBtn: $('soloDaysBtn'),
@@ -4094,6 +4470,7 @@ mean/nice
         feedback: $('feedback'),
 
         // settings modal
+        premiumBtn: $('premiumBtn'),
         settingsBtn: $('settingsBtn'),
         settingsOverlay: $('settingsOverlay'),
         settingsCloseBtn: $('settingsCloseBtn'),
@@ -4101,8 +4478,16 @@ mean/nice
         toggle_numbers: $('toggle_numbers'),
         toggle_commands: $('toggle_commands'),
         toggle_vocab: $('toggle_vocab'),
+        mayoMadnessDetails: $('mayoMadnessDetails'),
+        mayoSubmoduleList: $('mayoSubmoduleList'),
+        mayoLockedNote: $('mayoLockedNote'),
+        toggle_mayo_madness: $('toggle_mayo_madness'),
         toggle_mayo_madness_1: $('toggle_mayo_madness_1'),
         toggle_mayo_madness_2: $('toggle_mayo_madness_2'),
+        toggle_rapid_translations_2: $('toggle_rapid_translations_2'),
+        toggle_rapid_regular_verbs: $('toggle_rapid_regular_verbs'),
+        toggle_rapid_irregular_verbs: $('toggle_rapid_irregular_verbs'),
+        toggle_mayo_madness_3_rapid_translations: $('toggle_mayo_madness_3_rapid_translations'),
         toggle_reflexive: $('toggle_reflexive'),
         toggle_tenses: $('toggle_tenses'),
         toggle_days: $('toggle_days'),
@@ -4154,6 +4539,13 @@ mean/nice
         runChecksBtn: $('runChecksBtn'),
         checksOutput: $('checksOutput'),
 
+        // premium modal
+        premiumOverlay: $('premiumOverlay'),
+        premiumCloseBtn: $('premiumCloseBtn'),
+        premiumPasswordInput: $('premiumPasswordInput'),
+        premiumSubmitBtn: $('premiumSubmitBtn'),
+        premiumFeedback: $('premiumFeedback'),
+
         // numbers guide modal
         numbersGuideOverlay: $('numbersGuideOverlay'),
         numbersGuideCloseBtn: $('numbersGuideCloseBtn'),
@@ -4180,10 +4572,40 @@ mean/nice
 
     wireEvents() {
       // Settings open/close
+      this.$.premiumBtn.addEventListener('click', () => this.openPremiumAccess());
       this.$.settingsBtn.addEventListener('click', () => this.openSettings());
       this.$.settingsCloseBtn.addEventListener('click', () => this.closeModal(this.$.settingsOverlay));
       this.$.settingsOverlay.addEventListener('click', (e) => {
         if (e.target === this.$.settingsOverlay) this.closeModal(this.$.settingsOverlay);
+      });
+
+      // Premium access
+      this.$.premiumCloseBtn.addEventListener('click', () => this.closeModal(this.$.premiumOverlay));
+      this.$.premiumOverlay.addEventListener('click', (e) => {
+        if (e.target === this.$.premiumOverlay) this.closeModal(this.$.premiumOverlay);
+      });
+      this.$.premiumSubmitBtn.addEventListener('click', () => this.submitPremiumPassword());
+      this.$.premiumPasswordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.submitPremiumPassword();
+        }
+      });
+      this.$.toggle_mayo_madness.addEventListener('click', (e) => e.stopPropagation());
+      this.$.toggle_mayo_madness.addEventListener('change', () => {
+        if (!this.mayoPremiumUnlocked) {
+          this.$.toggle_mayo_madness.checked = false;
+          this.openPremiumAccess();
+          return;
+        }
+        this.state.settings.mayoMadnessEnabled = !!this.$.toggle_mayo_madness.checked;
+        if (!this.state.settings.mayoMadnessEnabled && this.currentQuestion && isMayoMadnessKey(this.currentQuestion.module)) {
+          this.soloMode = null;
+          this.nextQuestion({ keepFeedback: false });
+        }
+        this.saveSoon();
+        this.refreshSettingsUI();
+        this.updateCountsRow();
       });
 
       // Numbers guide
@@ -4215,8 +4637,13 @@ mean/nice
         this.$.soloNumbersBtn,
         this.$.soloCommandsBtn,
         this.$.soloVocabBtn,
+        this.$.soloMayoMadnessBtn,
         this.$.soloMayoMadness1Btn,
         this.$.soloMayoMadness2Btn,
+        this.$.soloRapidTranslations2Btn,
+        this.$.soloRapidRegularVerbsBtn,
+        this.$.soloRapidIrregularVerbsBtn,
+        this.$.soloMayoMadness3RapidTranslationsBtn,
         this.$.soloReflexiveBtn,
         this.$.soloTensesBtn,
         this.$.soloDaysBtn,
@@ -4517,6 +4944,7 @@ mean/nice
         if (!el) continue;
         el.checked = !!this.state.settings.modulesEnabled[m.key];
       }
+      if (this.$.toggle_mayo_madness) this.$.toggle_mayo_madness.checked = !!(this.mayoPremiumUnlocked && this.state.settings.mayoMadnessEnabled);
 
       // Tense toggles
       this.$.tense_present.checked = !!this.state.settings.tensesEnabled.present;
@@ -4550,31 +4978,36 @@ mean/nice
       this.$.toggleDebugMode.checked = !!window.APP_DEBUG;
 
       // Enable/disable solo buttons based on enabled modules
+      this.refreshPremiumAccessUI();
       this.updateSoloButtonsDisabled();
     },
 
     updateSoloButtonsDisabled() {
-      const enabled = this.state.settings.modulesEnabled;
-      this.$.soloNumbersBtn.disabled = !enabled.numbers;
-      this.$.soloCommandsBtn.disabled = !enabled.commands;
-      this.$.soloVocabBtn.disabled = !enabled.vocab;
-      this.$.soloMayoMadness1Btn.disabled = !enabled.mayo_madness_1;
-      this.$.soloMayoMadness2Btn.disabled = !enabled.mayo_madness_2;
-      this.$.soloReflexiveBtn.disabled = !enabled.reflexive;
-      this.$.soloTensesBtn.disabled = !enabled.tenses;
-      this.$.soloDaysBtn.disabled = !enabled.days;
-      this.$.soloMonthsBtn.disabled = !enabled.months;
-      this.$.soloSeasonsBtn.disabled = !enabled.seasons;
-      this.$.soloTimeBtn.disabled = !enabled.time;
-      this.$.soloColorsBtn.disabled = !enabled.colors;
-      this.$.soloPricesBtn.disabled = !enabled.prices;
-      this.$.soloWeatherBtn.disabled = !enabled.weather;
-      this.$.soloClothingBtn.disabled = !enabled.clothing;
-      this.$.soloFoodsBtn.disabled = !enabled.foods;
-      this.$.soloPresentProgressiveBtn.disabled = !enabled.present_progressive;
-      this.$.soloSerEstarBtn.disabled = !enabled.ser_estar;
-      this.$.soloGustarBtn.disabled = !enabled.gustar;
-      this.$.soloDatesBtn.disabled = !enabled.dates;
+      this.$.soloNumbersBtn.disabled = !this.isModulePracticeEnabled('numbers');
+      this.$.soloCommandsBtn.disabled = !this.isModulePracticeEnabled('commands');
+      this.$.soloVocabBtn.disabled = !this.isModulePracticeEnabled('vocab');
+      this.$.soloMayoMadnessBtn.disabled = !this.isModulePracticeEnabled(MAYO_MADNESS_KEY);
+      this.$.soloMayoMadness1Btn.disabled = !this.isModulePracticeEnabled('mayo_madness_1');
+      this.$.soloMayoMadness2Btn.disabled = !this.isModulePracticeEnabled('mayo_madness_2');
+      this.$.soloRapidTranslations2Btn.disabled = !this.isModulePracticeEnabled('rapid_translations_2');
+      this.$.soloRapidRegularVerbsBtn.disabled = !this.isModulePracticeEnabled('rapid_regular_verbs');
+      this.$.soloRapidIrregularVerbsBtn.disabled = !this.isModulePracticeEnabled('rapid_irregular_verbs');
+      this.$.soloMayoMadness3RapidTranslationsBtn.disabled = !this.isModulePracticeEnabled('mayo_madness_3_rapid_translations');
+      this.$.soloReflexiveBtn.disabled = !this.isModulePracticeEnabled('reflexive');
+      this.$.soloTensesBtn.disabled = !this.isModulePracticeEnabled('tenses');
+      this.$.soloDaysBtn.disabled = !this.isModulePracticeEnabled('days');
+      this.$.soloMonthsBtn.disabled = !this.isModulePracticeEnabled('months');
+      this.$.soloSeasonsBtn.disabled = !this.isModulePracticeEnabled('seasons');
+      this.$.soloTimeBtn.disabled = !this.isModulePracticeEnabled('time');
+      this.$.soloColorsBtn.disabled = !this.isModulePracticeEnabled('colors');
+      this.$.soloPricesBtn.disabled = !this.isModulePracticeEnabled('prices');
+      this.$.soloWeatherBtn.disabled = !this.isModulePracticeEnabled('weather');
+      this.$.soloClothingBtn.disabled = !this.isModulePracticeEnabled('clothing');
+      this.$.soloFoodsBtn.disabled = !this.isModulePracticeEnabled('foods');
+      this.$.soloPresentProgressiveBtn.disabled = !this.isModulePracticeEnabled('present_progressive');
+      this.$.soloSerEstarBtn.disabled = !this.isModulePracticeEnabled('ser_estar');
+      this.$.soloGustarBtn.disabled = !this.isModulePracticeEnabled('gustar');
+      this.$.soloDatesBtn.disabled = !this.isModulePracticeEnabled('dates');
     },
 
     renderKeyHintStrip() {
@@ -4666,6 +5099,7 @@ mean/nice
       // Close in priority order
       const modals = [
         this.$.hiddenOverlay,
+        this.$.premiumOverlay,
         this.$.settingsOverlay,
         this.$.numbersGuideOverlay,
         this.$.firstRunOverlay
@@ -4677,6 +5111,82 @@ mean/nice
         }
       }
       return false;
+    },
+
+    isModulePracticeEnabled(moduleKey) {
+      if (moduleKey === MAYO_MADNESS_KEY) return this.getEnabledMayoMadnessModules().length > 0;
+      if (!this.state.settings.modulesEnabled[moduleKey]) return false;
+      if (!isMayoMadnessKey(moduleKey)) return true;
+      return !!(this.mayoPremiumUnlocked && this.state.settings.mayoMadnessEnabled);
+    },
+
+    getEnabledMayoMadnessModules() {
+      if (!this.mayoPremiumUnlocked || !this.state.settings.mayoMadnessEnabled) return [];
+      return MAYO_MADNESS_SUBMODULE_KEYS.filter((key) => this.state.settings.modulesEnabled[key] && this.getModuleCounts(key).available > 0);
+    },
+
+    refreshPremiumAccessUI() {
+      const unlocked = !!this.mayoPremiumUnlocked;
+      const parentOn = !!this.state.settings.mayoMadnessEnabled;
+      if (this.$.premiumBtn) {
+        this.$.premiumBtn.classList.toggle('unlocked', unlocked);
+        this.$.premiumBtn.title = unlocked ? 'Mayo Madness unlocked' : 'Premium Access';
+        this.$.premiumBtn.setAttribute('aria-label', unlocked ? 'Mayo Madness unlocked' : 'Premium Access');
+      }
+      if (this.$.toggle_mayo_madness) {
+        this.$.toggle_mayo_madness.checked = unlocked && parentOn;
+        this.$.toggle_mayo_madness.disabled = !unlocked;
+      }
+      if (this.$.mayoLockedNote) this.$.mayoLockedNote.style.display = unlocked ? 'none' : '';
+      if (this.$.mayoSubmoduleList) this.$.mayoSubmoduleList.style.display = unlocked ? '' : 'none';
+
+      const mayoButtons = [
+        this.$.soloMayoMadnessBtn,
+        this.$.soloMayoMadness1Btn,
+        this.$.soloMayoMadness2Btn,
+        this.$.soloRapidTranslations2Btn,
+        this.$.soloRapidRegularVerbsBtn,
+        this.$.soloRapidIrregularVerbsBtn,
+        this.$.soloMayoMadness3RapidTranslationsBtn
+      ].filter(Boolean);
+      for (const btn of mayoButtons) btn.style.display = unlocked ? '' : 'none';
+
+      const mayoOptions = this.$.soloSelect ? Array.from(this.$.soloSelect.options).filter((opt) => opt.value === MAYO_MADNESS_KEY || isMayoMadnessKey(opt.value)) : [];
+      for (const opt of mayoOptions) {
+        opt.disabled = !unlocked;
+        opt.hidden = !unlocked;
+      }
+
+      for (const key of MAYO_MADNESS_SUBMODULE_KEYS) {
+        const el = this.$['toggle_' + key];
+        if (el) el.disabled = !unlocked;
+      }
+    },
+
+    openPremiumAccess() {
+      this.$.premiumPasswordInput.value = '';
+      this.setPremiumFeedback(this.mayoPremiumUnlocked ? 'Mayo Madness is already unlocked for this session.' : 'Enter the premium password to unlock Mayo Madness.', this.mayoPremiumUnlocked ? 'good' : 'neutral');
+      this.openModal(this.$.premiumOverlay, this.$.premiumPasswordInput);
+    },
+
+    setPremiumFeedback(html, tone) {
+      this.$.premiumFeedback.className = `feedback ${tone || 'neutral'}`;
+      this.$.premiumFeedback.innerHTML = html;
+    },
+
+    submitPremiumPassword() {
+      const password = this.$.premiumPasswordInput.value;
+      if (password === MAYO_MADNESS_PASSWORD) {
+        this.mayoPremiumUnlocked = true;
+        this.setPremiumFeedback('Unlocked. Mayo Madness is available for this session.', 'good');
+        this.closeModal(this.$.premiumOverlay);
+        this.refreshSettingsUI();
+        this.updateCountsRow();
+        this.showBanner('Premium unlocked: <strong>Mayo Madness</strong> is available for this session.');
+        return;
+      }
+      this.setPremiumFeedback('Incorrect password. Try again.', 'bad');
+      this.$.premiumPasswordInput.select();
     },
 
     // --------------------------------------------
@@ -4695,15 +5205,19 @@ mean/nice
     },
 
     anyModuleEnabled() {
-      return Object.values(this.state.settings.modulesEnabled).some(Boolean);
+      return MODULES.some((m) => this.isModulePracticeEnabled(m.key));
     },
 
     getEnabledModules() {
-      const enabled = this.state.settings.modulesEnabled;
-      const list = MODULES.map(m => m.key).filter(k => enabled[k]);
+      const list = MODULES.map(m => m.key).filter(k => this.isModulePracticeEnabled(k));
 
-      if (this.soloMode && enabled[this.soloMode]) return [this.soloMode];
-      if (this.soloMode && !enabled[this.soloMode]) this.soloMode = null;
+      if (this.soloMode === MAYO_MADNESS_KEY) {
+        const mayoList = this.getEnabledMayoMadnessModules();
+        if (mayoList.length) return mayoList;
+        this.soloMode = null;
+      }
+      if (this.soloMode && this.isModulePracticeEnabled(this.soloMode)) return [this.soloMode];
+      if (this.soloMode && !this.isModulePracticeEnabled(this.soloMode)) this.soloMode = null;
 
       return list;
     },
@@ -4824,6 +5338,30 @@ mean/nice
         for (const q of MAYO_MADNESS_LEVEL_2_POOL) if (hidden[q.id]) hiddenCount++;
         return { total, available: Math.max(0, total - hiddenCount) };
       }
+      if (moduleKey === 'rapid_translations_2') {
+        const total = RAPID_TRANSLATIONS_LEVEL_2_POOL.length;
+        let hiddenCount = 0;
+        for (const q of RAPID_TRANSLATIONS_LEVEL_2_POOL) if (hidden[q.id]) hiddenCount++;
+        return { total, available: Math.max(0, total - hiddenCount) };
+      }
+      if (moduleKey === 'rapid_regular_verbs') {
+        const total = RAPID_REGULAR_VERB_POOL.length;
+        let hiddenCount = 0;
+        for (const q of RAPID_REGULAR_VERB_POOL) if (hidden[q.id]) hiddenCount++;
+        return { total, available: Math.max(0, total - hiddenCount) };
+      }
+      if (moduleKey === 'rapid_irregular_verbs') {
+        const total = RAPID_IRREGULAR_VERB_POOL.length;
+        let hiddenCount = 0;
+        for (const q of RAPID_IRREGULAR_VERB_POOL) if (hidden[q.id]) hiddenCount++;
+        return { total, available: Math.max(0, total - hiddenCount) };
+      }
+      if (moduleKey === 'mayo_madness_3_rapid_translations') {
+        const total = MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL.length;
+        let hiddenCount = 0;
+        for (const q of MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL) if (hidden[q.id]) hiddenCount++;
+        return { total, available: Math.max(0, total - hiddenCount) };
+      }
       if (moduleKey === 'months') {
         const total = MONTHS_POOL.length;
         let hiddenCount = 0;
@@ -4932,13 +5470,20 @@ mean/nice
     // Rotation / next question
     // --------------------------------------------
     setSoloMode(moduleKey) {
-      if (!this.state.settings.modulesEnabled[moduleKey]) {
+      if ((moduleKey === MAYO_MADNESS_KEY || isMayoMadnessKey(moduleKey)) && !this.mayoPremiumUnlocked) {
+        if (this.$.soloSelect) this.$.soloSelect.value = '';
+        this.openPremiumAccess();
+        return;
+      }
+      if (!this.isModulePracticeEnabled(moduleKey)) {
         this.showBanner(`Can’t enter practice-only mode: <strong>${moduleKey}</strong> is disabled in Settings.`);
+        if (this.$.soloSelect) this.$.soloSelect.value = '';
         return;
       }
       this.soloMode = moduleKey;
       if (this.$.soloSelect) this.$.soloSelect.value = moduleKey;
-      this.showBanner(`Practice-only mode: <strong>${MODULES.find(m => m.key===moduleKey)?.name || moduleKey}</strong>. Click “All enabled modules” to return to rotation.`);
+      const modeName = moduleKey === MAYO_MADNESS_KEY ? 'Mayo Madness' : (MODULES.find(m => m.key===moduleKey)?.name || moduleKey);
+      this.showBanner(`Practice-only mode: <strong>${modeName}</strong>. Click “All enabled modules” to return to rotation.`);
       this.nextQuestion({ forceModule: moduleKey, keepFeedback: false });
     },
 
@@ -4975,6 +5520,10 @@ mean/nice
       if (moduleKey === 'vocab') for (const x of this.vocab) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'mayo_madness_1') for (const x of MAYO_MADNESS_LEVEL_1_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'mayo_madness_2') for (const x of MAYO_MADNESS_LEVEL_2_POOL) if (!hidden[x.id]) ids.push(x.id);
+      else if (moduleKey === 'rapid_translations_2') for (const x of RAPID_TRANSLATIONS_LEVEL_2_POOL) if (!hidden[x.id]) ids.push(x.id);
+      else if (moduleKey === 'rapid_regular_verbs') for (const x of RAPID_REGULAR_VERB_POOL) if (!hidden[x.id]) ids.push(x.id);
+      else if (moduleKey === 'rapid_irregular_verbs') for (const x of RAPID_IRREGULAR_VERB_POOL) if (!hidden[x.id]) ids.push(x.id);
+      else if (moduleKey === 'mayo_madness_3_rapid_translations') for (const x of MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'commands') for (const x of this.commandPool) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'reflexive') for (const x of this.reflexivePool) if (!hidden[x.id]) ids.push(x.id);
       else if (moduleKey === 'tenses') for (const x of this.tensesPool) if (!hidden[x.id] && this.isTenseItemAllowed(x)) ids.push(x.id);
@@ -5021,10 +5570,10 @@ mean/nice
         return;
       }
 
-      let moduleKey = forceModule || this.chooseModule(enabled);
+      let moduleKey = forceModule === MAYO_MADNESS_KEY ? this.chooseModule(enabled) : (forceModule || this.chooseModule(enabled));
 
       // If forced module is disabled/empty, fall back.
-      if (!this.state.settings.modulesEnabled[moduleKey]) {
+      if (!this.isModulePracticeEnabled(moduleKey)) {
         moduleKey = this.chooseModule(enabled);
       }
 
@@ -5744,6 +6293,26 @@ mean/nice
         if (v) return `Mayo Madness Level 2 Vocab: "${v.en}" -> ${v.sp}`;
         return id;
       }
+      if (id.startsWith('rapid2-')) {
+        const v = RAPID_TRANSLATIONS_LEVEL_2_POOL.find((item) => item.id === id);
+        if (v) return `Mayo Madness Level 2 Rapid Fire Translations: "${v.en}" -> ${v.sp}`;
+        return id;
+      }
+      if (id.startsWith('rapid-reg-')) {
+        const v = RAPID_REGULAR_VERB_POOL.find((item) => item.id === id);
+        if (v) return `Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations: "${v.en}" -> ${v.sp}`;
+        return id;
+      }
+      if (id.startsWith('rapid-irreg-')) {
+        const v = RAPID_IRREGULAR_VERB_POOL.find((item) => item.id === id);
+        if (v) return `Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations: "${v.en}" -> ${v.sp}`;
+        return id;
+      }
+      if (id.startsWith('mayo3-')) {
+        const v = MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL.find((item) => item.id === id);
+        if (v) return `Mayo Madness Level 3 Rapid Fire Translations: "${v.en}" -> ${v.sp}`;
+        return id;
+      }
       if (id.startsWith('cmd-')) {
         const parts = id.split('-');
         const form = parts[parts.length - 2];
@@ -6030,9 +6599,10 @@ mean/nice
     runAutomatedChecks(opts = {}) {
       const { startup = false } = opts;
       const results = [];
-      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'mayo_madness_1', 'mayo_madness_2', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'];
+      const requiredModules = ['days', 'months', 'seasons', 'time', 'colors', 'mayo_madness_1', 'mayo_madness_2', 'rapid_translations_2', 'rapid_regular_verbs', 'rapid_irregular_verbs', 'mayo_madness_3_rapid_translations', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'];
       const hasModules = requiredModules.every((key) => MODULES.some((m) => m.key === key) && modules[key]);
-      results.push({ ok: hasModules, label: 'Expanded modules registered (including Ser/Estar + Gustar split)' });
+      results.push({ ok: hasModules, label: 'Expanded modules registered (including Mayo Madness parent submodules)' });
+      results.push({ ok: MAYO_MADNESS_SUBMODULE_KEYS.length === 6 && MAYO_MADNESS_SUBMODULE_KEYS.every((key) => requiredModules.includes(key)), label: 'Mayo Madness parent tracks all submodules' });
       results.push({ ok: !MODULES.some((m) => m.key === 'ser_estar_gustar'), label: 'Deprecated ser_estar_gustar module removed from registry' });
       results.push({ ok: DAYS_POOL.length >= 7, label: 'Days pool has >= 7 items' });
       results.push({ ok: MONTHS_POOL.length >= 12, label: 'Months pool has >= 12 items' });
@@ -6041,6 +6611,10 @@ mean/nice
       results.push({ ok: COLORS_POOL.length >= 15, label: 'Colors pool has >= 15 items' });
       results.push({ ok: MAYO_MADNESS_LEVEL_1_POOL.length === 9, label: 'Mayo Madness Level 1 Vocab pool has 9 items' });
       results.push({ ok: MAYO_MADNESS_LEVEL_2_POOL.length === 7, label: 'Mayo Madness Level 2 Vocab pool has 7 items' });
+      results.push({ ok: RAPID_TRANSLATIONS_LEVEL_2_POOL.length === 5, label: 'Mayo Madness Level 2 Rapid Fire Translations pool has 5 items' });
+      results.push({ ok: RAPID_REGULAR_VERB_POOL.length === 8, label: 'Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations pool has 8 items' });
+      results.push({ ok: RAPID_IRREGULAR_VERB_POOL.length === 9, label: 'Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations pool has 9 items' });
+      results.push({ ok: MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL.length === 13, label: 'Mayo Madness Level 3 Rapid Fire Translations pool has 13 items' });
       results.push({ ok: PRICES_POOL.length >= 30, label: 'Prices pool has >= 30 items' });
       results.push({ ok: WEATHER_POOL.length >= 20, label: 'Weather pool has >= 20 items' });
       results.push({ ok: CLOTHING_POOL.length >= 20, label: 'Clothing pool has >= 20 items' });
@@ -6061,6 +6635,42 @@ mean/nice
       results.push({ ok: deskAnswers.has(normalizeLoose('pupitre')), label: 'Mayo Madness Level 1 desk accepts pupitre' });
       const mayo2Sample = modules.mayo_madness_2.generateQuestion(this);
       results.push({ ok: !!mayo2Sample && mayo2Sample.mode === 'text' && mayo2Sample.acceptable instanceof Set, label: 'Mayo Madness Level 2 Vocab generates text questions' });
+      const rapidTranslationSample = modules.rapid_translations_2.generateQuestion(this);
+      const rapidRegularSample = modules.rapid_regular_verbs.generateQuestion(this);
+      const rapidIrregularSample = modules.rapid_irregular_verbs.generateQuestion(this);
+      const mayo3Sample = modules.mayo_madness_3_rapid_translations.generateQuestion(this);
+      results.push({ ok: !!rapidTranslationSample && rapidTranslationSample.mode === 'text' && rapidTranslationSample.acceptable instanceof Set, label: 'Mayo Madness Level 2 Rapid Fire Translations generates text questions' });
+      results.push({ ok: !!rapidRegularSample && rapidRegularSample.mode === 'text' && rapidRegularSample.acceptable instanceof Set, label: 'Mayo Madness Level 2 Rapid Fire Regular Verb Conjugations generates text questions' });
+      results.push({ ok: !!rapidIrregularSample && rapidIrregularSample.mode === 'text' && rapidIrregularSample.acceptable instanceof Set, label: 'Mayo Madness Level 2 Rapid Fire Irregular Verb Conjugations generates text questions' });
+      results.push({ ok: !!mayo3Sample && mayo3Sample.mode === 'text' && mayo3Sample.acceptable instanceof Set, label: 'Mayo Madness Level 3 Rapid Fire Translations generates text questions' });
+      const knowAnswers = buildAcceptableAnswerSet(RAPID_IRREGULAR_VERB_POOL.find((x) => x.id === 'rapid-irreg-know').acceptable);
+      results.push({ ok: knowAnswers.has(normalizeLoose('yo se')) && knowAnswers.has(normalizeLoose('yo conozco')), label: 'Rapid Fire irregular I know accepts yo se/yo conozco variants' });
+      const watchAnswers = buildAcceptableAnswerSet(RAPID_REGULAR_VERB_POOL.find((x) => x.id === 'rapid-reg-watch').acceptable);
+      results.push({ ok: watchAnswers.has(normalizeLoose('miramos')) && watchAnswers.has(normalizeLoose('vemos')), label: 'Rapid Fire regular We watch accepts miramos and vemos' });
+      const sisterAnswers = buildAcceptableAnswerSet(RAPID_TRANSLATIONS_LEVEL_2_POOL.find((x) => x.id === 'rapid2-sisters').acceptable);
+      results.push({ ok: sisterAnswers.has(normalizeLoose('yo tengo 5 hermanas altas con ojos azules')), label: 'Rapid Fire sentence variants accept optional subject and digit forms' });
+      const hurryAnswers = buildAcceptableAnswerSet(MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL.find((x) => x.id === 'mayo3-hurry-hungry').acceptable);
+      results.push({ ok: hurryAnswers.has(normalizeLoose('nosotras estamos con prisa y tenemos hambre')), label: 'Mayo Madness Level 3 accepts subject and regional sentence variants' });
+      const knewAnswers = buildAcceptableAnswerSet(MAYO_MADNESS_LEVEL_3_RAPID_TRANSLATIONS_POOL.find((x) => x.id === 'mayo3-i-knew').acceptable);
+      results.push({ ok: knewAnswers.has(normalizeLoose('yo supe')) && knewAnswers.has(normalizeLoose('yo sabia')), label: 'Mayo Madness Level 3 accepts past-tense variation pairs' });
+      const priorPremiumUnlocked = this.mayoPremiumUnlocked;
+      const priorParentEnabled = this.state.settings.mayoMadnessEnabled;
+      const priorLevel1Enabled = this.state.settings.modulesEnabled.mayo_madness_1;
+      const priorMayoHidden = this.state.hiddenItems['mayo1-lapiz'];
+      delete this.state.hiddenItems['mayo1-lapiz'];
+      this.state.settings.mayoMadnessEnabled = true;
+      this.state.settings.modulesEnabled.mayo_madness_1 = true;
+      this.mayoPremiumUnlocked = false;
+      const lockedBlocksMayo = !this.isModulePracticeEnabled('mayo_madness_1') && this.getEnabledMayoMadnessModules().length === 0;
+      this.mayoPremiumUnlocked = true;
+      const unlockedAllowsMayo = this.isModulePracticeEnabled('mayo_madness_1') && this.getEnabledMayoMadnessModules().includes('mayo_madness_1');
+      this.mayoPremiumUnlocked = priorPremiumUnlocked;
+      this.state.settings.mayoMadnessEnabled = priorParentEnabled;
+      this.state.settings.modulesEnabled.mayo_madness_1 = priorLevel1Enabled;
+      if (priorMayoHidden) this.state.hiddenItems['mayo1-lapiz'] = priorMayoHidden;
+      else delete this.state.hiddenItems['mayo1-lapiz'];
+      results.push({ ok: lockedBlocksMayo && unlockedAllowsMayo, label: 'Premium gate blocks Mayo Madness until session unlock' });
+      results.push({ ok: this.$.premiumPasswordInput?.type === 'password', label: 'Premium password input hides typed characters' });
       const priorNumbersMin = this.state.settings.numbersMin;
       const priorNumbersMax = this.state.settings.numbersMax;
       const priorNumbersSequential = this.state.settings.numbersSequential;
@@ -6092,6 +6702,7 @@ mean/nice
       ].join(' ');
       results.push({ ok: /range/i.test(visibleHelpText) && /order mode|go in order/i.test(visibleHelpText) && /typed Numbers|type and spell/i.test(visibleHelpText), label: 'Visible help text covers Numbers range, typed mode, and order mode' });
       results.push({ ok: /Mayo Madness Level 1\/2|Mayo Madness Level 2/i.test(visibleHelpText), label: 'Visible help text covers Mayo Madness Level 1/2 modules' });
+      results.push({ ok: /Rapid Fire/i.test(visibleHelpText), label: 'Visible help text covers Rapid Fire modules' });
       results.push({ ok: this.$.countsRow?.closest('.top-row')?.getAttribute('aria-hidden') === 'true', label: 'Main counts/data row stays hidden while counts logic remains available' });
       const missingToggles = MODULES
         .map((m) => m.key)
@@ -6107,11 +6718,19 @@ mean/nice
       });
       this.state.moduleChoices.newModulesAnswerMode = prevMode;
       results.push({ ok: sampleChecks.every(Boolean), label: 'New modules generate text mode in spelling-only setting' });
-      const textOnlyChecks = ['mayo_madness_1', 'mayo_madness_2', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'].map((k) => {
+      const textOnlyChecks = ['mayo_madness_1', 'mayo_madness_2', 'rapid_translations_2', 'rapid_regular_verbs', 'rapid_irregular_verbs', 'mayo_madness_3_rapid_translations', 'prices', 'weather', 'clothing', 'foods', 'present_progressive', 'ser_estar', 'gustar', 'dates'].map((k) => {
         const q = modules[k].generateQuestion(this);
         return !!q && q.mode === 'text';
       });
       results.push({ ok: textOnlyChecks.every(Boolean), label: 'Newly added modules generate text mode' });
+      const twelveFifteen = TIME_POOL.find((x) => x.id === 'time-1215');
+      results.push({ ok: twelveFifteen && normalizeLoose(twelveFifteen.display).includes('doce') && !normalizeLoose(twelveFifteen.display).includes('una'), label: 'Translation audit: 12:15 uses doce, not una' });
+      const janFirstAnswers = buildAcceptableAnswerSet(['el primero de enero', 'el uno de enero']);
+      results.push({ ok: janFirstAnswers.has(normalizeLoose('el primero de enero')) && janFirstAnswers.has(normalizeLoose('el uno de enero')), label: 'Translation audit: first-of-month date accepts primero and uno' });
+      const rainyAnswers = buildAcceptableAnswerSet(WEATHER_POOL.find((x) => x.id === 'weather-rainy').acceptable);
+      results.push({ ok: rainyAnswers.has(normalizeLoose('llueve')), label: 'Translation audit: rainy/weather variants include llueve' });
+      const pork = FOODS_POOL.find((x) => x.id === 'foods-pork');
+      results.push({ ok: pork && normalizeLoose(pork.sp) === 'la carne de cerdo' && buildAcceptableAnswerSet(pork.acceptable).has(normalizeLoose('el cerdo')), label: 'Translation audit: pork uses food phrase and accepts common shortcut' });
       const serEstarSample = modules.ser_estar.generateQuestion(this);
       const serEstarConjugated = !!serEstarSample && serEstarSample.expectedDisplay && !['ser','estar'].includes(normalizeLoose(serEstarSample.expectedDisplay));
       results.push({ ok: serEstarConjugated, label: 'Ser/Estar expects conjugated form (not infinitive)' });
