@@ -1278,7 +1278,7 @@ Developer note:
   ];
 
   const MAYO_MADNESS_KEY = 'mayo_madness';
-  const MAYO_MADNESS_PASSWORD = 'ibelikesheesh';
+  const MAYO_MADNESS_PASSWORDS = new Set(['ibelikesheesh', 'patriotssuck', '0612jdbj']);
   const MAYO_MADNESS_SUBMODULE_KEYS = [
     'mayo_madness_1',
     'mayo_madness_2',
@@ -5176,7 +5176,7 @@ mean/nice
 
     submitPremiumPassword() {
       const password = this.$.premiumPasswordInput.value;
-      if (password === MAYO_MADNESS_PASSWORD) {
+      if (MAYO_MADNESS_PASSWORDS.has(password)) {
         this.mayoPremiumUnlocked = true;
         this.setPremiumFeedback('Unlocked. Mayo Madness is available for this session.', 'good');
         this.closeModal(this.$.premiumOverlay);
